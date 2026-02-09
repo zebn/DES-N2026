@@ -1,6 +1,6 @@
-# 🔐 PROTECCI-N2025 - Sistema de Protección de Información Militar
+# 🔐DES-N2026 - Sentryvault
 
-Sistema seguro de almacenamiento e intercambio de información clasificada con cifrado de nivel militar.
+Sistema seguro de almacenamiento e intercambio de credenciales
 
 ## 📋 Descripción
 
