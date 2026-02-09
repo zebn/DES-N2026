@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "@angular/cdk": "^20.2.11",
+    "@angular/material": "^20.2.11",
+    "@noble/ciphers": "^2.0.1",
+    "@noble/curves": "^2.0.1",
+    "@noble/hashes": "^2.0.1",
+    "otpauth": "^9.4.1",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.6"
+  }
+}

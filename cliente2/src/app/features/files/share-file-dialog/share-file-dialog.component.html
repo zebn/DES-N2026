@@ -1,0 +1,108 @@
+<div class="share-dialog">
+    <h2 mat-dialog-title>
+        <mat-icon>share</mat-icon>
+        Compartir archivo
+    </h2>
+
+    <mat-dialog-content>
+        <div class="file-info">
+            <mat-icon class="file-icon">description</mat-icon>
+            <div class="file-details">
+                <div class="file-title">{{ data.file.title }}</div>
+                <div class="file-name">{{ data.file.original_filename }}</div>
+                <mat-chip *ngIf="data.file.classification_level" class="classification-chip"
+                    [class]="'level-' + data.file.classification_level.toLowerCase()">
+                    {{ data.file.classification_level }}
+                </mat-chip>
+            </div>
+        </div>
+
+        <form [formGroup]="shareForm" (ngSubmit)="onSubmit()">
+            <!-- User Selection -->
+            <mat-form-field class="full-width" appearance="outline">
+                <mat-label>
+                    <mat-icon>person</mat-icon>
+                    Usuario destinatario
+                </mat-label>
+                <input matInput type="email" formControlName="recipient_email" placeholder="email@ejemplo.com"
+                    (input)="filterUsers($any($event.target).value)" [matAutocomplete]="auto">
+                <mat-autocomplete #auto="matAutocomplete">
+                    <mat-option *ngFor="let user of filteredUsers" [value]="user.email"
+                        (onSelectionChange)="selectUser(user)">
+                        <div class="user-option">
+                            <div class="user-info">
+                                <div class="user-name">{{ user.nombre }} {{ user.apellidos }}</div>
+                                <div class="user-email">{{ user.email }}</div>
+                            </div>
+                            <mat-chip *ngIf="user.clearance_level" class="clearance-chip"
+                                [class]="'level-' + user.clearance_level.toLowerCase()">
+                                {{ user.clearance_level }}
+                            </mat-chip>
+                        </div>
+                    </mat-option>
+                </mat-autocomplete>
+                <mat-error *ngIf="shareForm.get('recipient_email')?.hasError('required')">
+                    Email es requerido
+                </mat-error>
+                <mat-error *ngIf="shareForm.get('recipient_email')?.hasError('email')">
+                    Email inválido
+                </mat-error>
+            </mat-form-field>
+
+            <!-- Password -->
+            <mat-form-field class="full-width" appearance="outline">
+                <mat-label>
+                    <mat-icon>lock</mat-icon>
+                    Tu contraseña (para descifrar la clave)
+                </mat-label>
+                <input matInput type="password" formControlName="password" placeholder="Ingresa tu contraseña">
+                <mat-error *ngIf="shareForm.get('password')?.hasError('required')">
+                    Contraseña es requerida
+                </mat-error>
+            </mat-form-field>
+
+            <!-- Permissions -->
+            <div class="permissions-section">
+                <h3>Permisos</h3>
+
+                <mat-checkbox formControlName="can_download" color="primary">
+                    <mat-icon>download</mat-icon>
+                    Permitir descarga
+                </mat-checkbox>
+
+                <mat-checkbox formControlName="can_share" color="primary">
+                    <mat-icon>share</mat-icon>
+                    Permitir re-compartir
+                </mat-checkbox>
+            </div>
+
+            <!-- Expiration -->
+            <mat-form-field class="full-width" appearance="outline">
+                <mat-label>
+                    <mat-icon>event</mat-icon>
+                    Fecha de expiración (opcional)
+                </mat-label>
+                <input matInput type="datetime-local" formControlName="expires_at">
+                <mat-hint>Dejar vacío para acceso permanente</mat-hint>
+            </mat-form-field>
+
+            <div class="info-box" *ngIf="isLoading">
+                <mat-spinner diameter="20"></mat-spinner>
+                <span>Cargando usuarios...</span>
+            </div>
+        </form>
+    </mat-dialog-content>
+
+    <mat-dialog-actions align="end">
+        <button mat-button type="button" (click)="onCancel()" [disabled]="isSharing">
+            Cancelar
+        </button>
+        <button mat-raised-button color="primary" type="submit" (click)="onSubmit()"
+            [disabled]="!shareForm.valid || isSharing">
+            <mat-spinner *ngIf="isSharing" diameter="20"></mat-spinner>
+            <mat-icon *ngIf="!isSharing">share</mat-icon>
+            <span *ngIf="!isSharing">Compartir</span>
+            <span *ngIf="isSharing">Compartiendo...</span>
+        </button>
+    </mat-dialog-actions>
+</div>

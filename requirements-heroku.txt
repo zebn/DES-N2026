@@ -1,0 +1,10 @@
+# Configuración adicional para producción en Heroku
+
+# Postgres Connection Pool (recomendado para Heroku)
+psycopg2-binary==2.9.9
+
+# API Documentation
+flasgger==0.9.7.1
+
+# Para soporte de base de datos adicional si es necesario
+# psycopg2==2.9.9  # Alternativa a psycopg2-binary

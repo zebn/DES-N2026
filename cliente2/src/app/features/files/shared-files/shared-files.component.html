@@ -1,0 +1,104 @@
+<div class="shared-files-container">
+    <div class="header">
+        <h1>
+            <mat-icon>people</mat-icon>
+            Archivos Compartidos Conmigo
+        </h1>
+        <button mat-raised-button color="primary" (click)="loadSharedFiles()">
+            <mat-icon>refresh</mat-icon>
+            Actualizar
+        </button>
+    </div>
+
+    <div class="loading-container" *ngIf="isLoading">
+        <mat-spinner></mat-spinner>
+        <p>Cargando archivos compartidos...</p>
+    </div>
+
+    <div class="empty-state" *ngIf="!isLoading && sharedFiles.length === 0">
+        <mat-icon>folder_shared</mat-icon>
+        <h2>No hay archivos compartidos</h2>
+        <p>Cuando alguien comparta un archivo contigo, aparecerá aquí.</p>
+    </div>
+
+    <div class="table-container" *ngIf="!isLoading && sharedFiles.length > 0">
+        <table mat-table [dataSource]="sharedFiles" class="shared-files-table">
+
+            <!-- Title Column -->
+            <ng-container matColumnDef="title">
+                <th mat-header-cell *matHeaderCellDef>Título</th>
+                <td mat-cell *matCellDef="let file">
+                    <div class="file-title-cell">
+                        <mat-icon>description</mat-icon>
+                        <span>{{ file.title }}</span>
+                    </div>
+                </td>
+            </ng-container>
+
+            <!-- Filename Column -->
+            <ng-container matColumnDef="filename">
+                <th mat-header-cell *matHeaderCellDef>Archivo</th>
+                <td mat-cell *matCellDef="let file">{{ file.filename }}</td>
+            </ng-container>
+
+            <!-- Classification Column -->
+            <ng-container matColumnDef="classification">
+                <th mat-header-cell *matHeaderCellDef>Clasificación</th>
+                <td mat-cell *matCellDef="let file">
+                    <mat-chip *ngIf="file.classification_level"
+                        [class]="'level-' + file.classification_level.toLowerCase()">
+                        {{ file.classification_level }}
+                    </mat-chip>
+                </td>
+            </ng-container>
+
+            <!-- Shared By Column -->
+            <ng-container matColumnDef="shared_by">
+                <th mat-header-cell *matHeaderCellDef>Compartido por</th>
+                <td mat-cell *matCellDef="let file">
+                    <div class="shared-by-cell">
+                        <mat-icon>person</mat-icon>
+                        <span>{{ file.shared_by }}</span>
+                    </div>
+                </td>
+            </ng-container>
+
+            <!-- Shared At Column -->
+            <ng-container matColumnDef="shared_at">
+                <th mat-header-cell *matHeaderCellDef>Compartido</th>
+                <td mat-cell *matCellDef="let file">{{ formatDate(file.shared_at) }}</td>
+            </ng-container>
+
+            <!-- Expires At Column -->
+            <ng-container matColumnDef="expires_at">
+                <th mat-header-cell *matHeaderCellDef>Expira</th>
+                <td mat-cell *matCellDef="let file">
+                    <span *ngIf="!file.expires_at" class="no-expiry">Sin expiración</span>
+                    <span *ngIf="file.expires_at && !isExpired(file.expires_at)" class="valid-expiry">
+                        {{ formatDate(file.expires_at) }}
+                    </span>
+                    <span *ngIf="file.expires_at && isExpired(file.expires_at)" class="expired">
+                        <mat-icon>warning</mat-icon>
+                        Expirado
+                    </span>
+                </td>
+            </ng-container>
+
+            <!-- Actions Column -->
+            <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                <td mat-cell *matCellDef="let file">
+                    <button mat-raised-button color="primary" (click)="downloadSharedFile(file)"
+                        [disabled]="!file.can_download || isExpired(file.expires_at)">
+                        <mat-icon>download</mat-icon>
+                        Descargar
+                    </button>
+                </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+                [class.expired-row]="isExpired(row.expires_at)"></tr>
+        </table>
+    </div>
+</div>

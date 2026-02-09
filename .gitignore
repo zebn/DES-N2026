@@ -1,0 +1,60 @@
+# Archivos que no deben subirse a Heroku
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Node.js
+node_modules/
+package-lock.json
+npm-debug.log
+yarn-error.log
+
+# Entornos virtuales
+venv/
+env/
+ENV/
+
+# Variables de entorno locales (Heroku usa config vars)
+.env
+./cliente/.env
+
+
+# Base de datos local (Heroku usa PostgreSQL)
+# *.db
+# *.sqlite
+# *.sqlite3
+# instance/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs locales
+*.log
+
+# Uploads locales (usar S3 u otro storage en producción)
+uploads/
+
+# Archivos temporales
+*.tmp
+*.bak
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Configuración local
+.secure_client_config.json
+qr_2fa.png
+
+# SSL Certificates (autofirmados para desarrollo)
+
+

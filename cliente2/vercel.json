@@ -1,0 +1,10 @@
+{
+    "buildCommand": "npm install && npm run build",
+    "outputDirectory": "dist/protecci-n-client",
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
+}

@@ -1,0 +1,58 @@
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 64px);
+  padding: 20px;
+}
+
+.login-card {
+  max-width: 450px;
+  width: 100%;
+}
+
+.shield-icon {
+  color: #ffd700;
+  margin-right: 8px;
+}
+
+.full-width {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.register-link {
+  text-align: center;
+  margin-top: 16px;
+}
+
+mat-spinner {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+// 2FA Section Styles
+.twofa-section {
+  margin-bottom: 16px;
+
+  &.required {
+    padding: 16px;
+    background: #e3f2fd;
+    border-radius: 8px;
+    border: 2px solid #1976d2;
+    margin-bottom: 20px;
+  }
+}
+
+.twofa-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1976d2;
+  font-weight: 500;
+  margin-bottom: 12px;
+
+  mat-icon {
+    color: #1976d2;
+  }
+}

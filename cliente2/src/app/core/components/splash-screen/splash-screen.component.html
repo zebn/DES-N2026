@@ -1,0 +1,23 @@
+<div class="splash-wrapper" *ngIf="showSplash">
+  <!-- Phase 1 -->
+  <app-splash-phase1 *ngIf="currentPhase === 'phase1'" (completed)="onPhase1Completed()">
+  </app-splash-phase1>
+
+  <!-- Phase 2 - встроенная версия для отладки -->
+  <div class="phase2-container" *ngIf="currentPhase === 'phase2'">
+    <div class="phase2-content">
+      <h1 class="phase2-title">CONECTANDO AL SERVIDOR</h1>
+      <div class="phase2-url">{{ serverInfo.host }}</div>
+
+      <!-- Progress Bar -->
+      <div class="phase2-progress-container">
+        <div class="phase2-progress-bar">
+          <div class="phase2-progress-fill" [style.width.%]="phase2Progress"></div>
+        </div>
+        <div class="phase2-progress-text">{{ phase2Progress.toFixed(0) }}%</div>
+      </div>
+
+      <div class="phase2-step">{{ phase2StepText }}</div>
+    </div>
+  </div>
+</div>

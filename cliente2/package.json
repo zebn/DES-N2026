@@ -1,0 +1,104 @@
+{
+  "name": "protecci-n-client",
+  "version": "1.0.0",
+  "main": "electron.js",
+  "description": "Sistema de Protección de Información Clasificada - Cliente Desktop",
+  "author": "MILCOM Security Team",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "build:prod": "ng build --configuration production",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "dev": "node start-electron-dev.js",
+    "build:win": "npm run build:prod && electron-builder --win --x64",
+    "build:mac": "npm run build:prod && electron-builder --mac",
+    "build:linux": "npm run build:prod && electron-builder --linux",
+    "build:all": "npm run build:prod && electron-builder --win --mac --linux",
+    "build:exe": "npm run build:win",
+    "build:portable": "npm run build:prod && electron-builder --win portable --x64"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/animations": "^17.3.0",
+    "@angular/cdk": "^17.3.0",
+    "@angular/common": "^17.3.0",
+    "@angular/compiler": "^17.3.0",
+    "@angular/core": "^17.3.0",
+    "@angular/forms": "^17.3.0",
+    "@angular/material": "^17.3.0",
+    "@angular/platform-browser": "^17.3.0",
+    "@angular/platform-browser-dynamic": "^17.3.0",
+    "@angular/router": "^17.3.0",
+    "@noble/ciphers": "^0.5.0",
+    "@noble/curves": "^1.4.0",
+    "@noble/hashes": "^1.4.0",
+    "hash-wasm": "^4.12.0",
+    "otpauth": "^9.2.0",
+    "qrcode": "^1.5.3",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.14.3"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^17.3.0",
+    "@angular/cli": "^17.3.0",
+    "@angular/compiler-cli": "^17.3.0",
+    "@types/node": "^24.10.1",
+    "@types/qrcode": "^1.5.5",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "typescript": "~5.4.2",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.milcom.protecci-n",
+    "productName": "MILCOM Secure Exchange",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron.js",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "src/favicon.ico"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "src/favicon.ico",
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": null,
+      "entitlementsInherit": null
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb",
+        "tar.gz"
+      ],
+      "icon": "src/favicon.ico",
+      "category": "Office",
+      "executableName": "milcom-secure-exchange"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

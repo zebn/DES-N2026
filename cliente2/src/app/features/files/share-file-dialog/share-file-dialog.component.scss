@@ -1,0 +1,209 @@
+.share-dialog {
+    min-width: 500px;
+    max-width: 600px;
+
+    h2 {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0;
+        color: #1976d2;
+
+        mat-icon {
+            font-size: 28px;
+            width: 28px;
+            height: 28px;
+        }
+    }
+
+    mat-dialog-content {
+        padding: 20px 24px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    .file-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px;
+        background-color: #f5f5f5;
+        border-radius: 8px;
+        margin-bottom: 24px;
+
+        .file-icon {
+            font-size: 48px;
+            width: 48px;
+            height: 48px;
+            color: #1976d2;
+        }
+
+        .file-details {
+            flex: 1;
+
+            .file-title {
+                font-size: 16px;
+                font-weight: 500;
+                color: #333;
+                margin-bottom: 4px;
+            }
+
+            .file-name {
+                font-size: 14px;
+                color: #666;
+                margin-bottom: 8px;
+            }
+
+            .classification-chip {
+                font-size: 11px;
+                padding: 4px 8px;
+                height: auto;
+                min-height: 20px;
+            }
+        }
+    }
+
+    .full-width {
+        width: 100%;
+        margin-bottom: 16px;
+
+        mat-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            mat-icon {
+                font-size: 18px;
+                width: 18px;
+                height: 18px;
+            }
+        }
+    }
+
+    .user-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 0;
+        width: 100%;
+
+        .user-info {
+            flex: 1;
+
+            .user-name {
+                font-size: 14px;
+                font-weight: 500;
+                color: #333;
+            }
+
+            .user-email {
+                font-size: 12px;
+                color: #666;
+            }
+        }
+
+        .clearance-chip {
+            font-size: 10px;
+            padding: 2px 6px;
+            height: auto;
+            min-height: 18px;
+        }
+    }
+
+    .permissions-section {
+        margin: 24px 0;
+        padding: 16px;
+        background-color: #f9f9f9;
+        border-radius: 4px;
+
+        h3 {
+            margin: 0 0 16px 0;
+            font-size: 14px;
+            font-weight: 500;
+            color: #555;
+            text-transform: uppercase;
+        }
+
+        mat-checkbox {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+
+            ::ng-deep .mat-checkbox-label {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            mat-icon {
+                font-size: 18px;
+                width: 18px;
+                height: 18px;
+            }
+        }
+    }
+
+    .info-box {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background-color: #e3f2fd;
+        border-radius: 4px;
+        color: #1976d2;
+        margin-top: 16px;
+
+        mat-spinner {
+            ::ng-deep circle {
+                stroke: #1976d2;
+            }
+        }
+    }
+
+    .classification-chip,
+    .clearance-chip {
+        border-radius: 4px;
+        font-weight: 500;
+
+        &.level-confidential {
+            background-color: #fff3e0;
+            color: #e65100;
+        }
+
+        &.level-secret {
+            background-color: #fce4ec;
+            color: #c2185b;
+        }
+
+        &.level-top_secret {
+            background-color: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        &.level-unclassified {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+    }
+
+    mat-dialog-actions {
+        padding: 16px 24px;
+        border-top: 1px solid #e0e0e0;
+
+        button {
+            margin-left: 8px;
+
+            &[type="submit"] {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+
+                mat-spinner {
+                    ::ng-deep circle {
+                        stroke: white;
+                    }
+                }
+            }
+        }
+    }
+}
