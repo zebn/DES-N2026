@@ -123,7 +123,6 @@ SecretVersion:
   - encrypted_data: Text (JSON cifrado)
   - encrypted_aes_key: Text
   - content_hash: String
-  - digital_signature: Text
   - changed_by_id: FK -> User
   - change_reason: String (nullable)
   - created_at: DateTime
