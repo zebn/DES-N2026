@@ -57,6 +57,13 @@ import { AuthService } from './core/services/auth.service';
             </a>
             
             <mat-divider></mat-divider>
+
+            <a mat-list-item routerLink="/secrets" routerLinkActive="active-link">
+              <mat-icon matListItemIcon>lock</mat-icon>
+              <span matListItemTitle>Bóveda de Secretos</span>
+            </a>
+            
+            <mat-divider></mat-divider>
             
             <a mat-list-item routerLink="/profile" routerLinkActive="active-link">
               <mat-icon matListItemIcon>person</mat-icon>

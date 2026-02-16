@@ -435,7 +435,7 @@ class SecretAccessLog(db.Model):
     __tablename__ = 'secret_access_logs'
 
     id = db.Column(db.Integer, primary_key=True)
-    secret_id = db.Column(db.String(36), db.ForeignKey('secrets.id'), nullable=False)
+    secret_id = db.Column(db.String(36), db.ForeignKey('secrets.id'), nullable=True)  # nullable for failed CREATE logs
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
     # Detalles del acceso
