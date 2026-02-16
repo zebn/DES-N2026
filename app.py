@@ -15,6 +15,7 @@ from config import config
 from models import db, bcrypt
 from routes.auth import auth_bp
 from routes.files import files_bp
+from routes.secrets import secrets_bp, folders_bp
 
 def create_app(config_name=None):
     """Factory para crear la aplicación Flask"""
@@ -124,6 +125,14 @@ def create_app(config_name=None):
                 "description": "Operaciones de gestión de archivos cifrados"
             },
             {
+                "name": "secrets",
+                "description": "Gestión de secretos cifrados E2E (CRUD, versiones, rotación)"
+            },
+            {
+                "name": "folders",
+                "description": "Organización de secretos en carpetas"
+            },
+            {
                 "name": "system",
                 "description": "Información del sistema y health checks"
             }
@@ -135,6 +144,8 @@ def create_app(config_name=None):
     # Registrar blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(files_bp)
+    app.register_blueprint(secrets_bp)
+    app.register_blueprint(folders_bp)
     
     # Crear tablas de base de datos si no existen
     with app.app_context():
