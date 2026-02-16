@@ -401,7 +401,6 @@ class SecretVersion(db.Model):
     encrypted_data = db.Column(db.Text, nullable=False)
     encrypted_aes_key = db.Column(db.Text, nullable=False)
     content_hash = db.Column(db.String(64), nullable=False)
-    digital_signature = db.Column(db.Text, nullable=False)
 
     # Quién y por qué
     changed_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -426,7 +425,6 @@ class SecretVersion(db.Model):
         if include_encrypted:
             data['encrypted_data'] = self.encrypted_data
             data['encrypted_aes_key'] = self.encrypted_aes_key
-            data['digital_signature'] = self.digital_signature
         return data
 
 
