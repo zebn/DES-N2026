@@ -1,4 +1,4 @@
-# MILCOM Secure Exchange - Aplicación Desktop
+# SentryVault - Aplicación Desktop
 
 Aplicación de escritorio para el Sistema de Protección de Información Clasificada con cifrado End-to-End.
 
@@ -36,8 +36,8 @@ npm run electron:build:win
 ```
 
 Genera:
-- `release/MILCOM Secure Exchange Setup.exe` - Instalador NSIS
-- `release/MILCOM Secure Exchange.exe` - Versión portable
+- `release/SentryVault Setup.exe` - Instalador NSIS
+- `release/SentryVault.exe` - Versión portable
 
 ### macOS
 ```bash
@@ -45,7 +45,7 @@ npm run electron:build:mac
 ```
 
 Genera:
-- `release/MILCOM Secure Exchange.dmg`
+- `release/SentryVault.dmg`
 
 ### Linux
 ```bash
@@ -53,8 +53,8 @@ npm run electron:build:linux
 ```
 
 Genera:
-- `release/MILCOM Secure Exchange.AppImage`
-- `release/milcom-secure-exchange.deb`
+- `release/SentryVault.AppImage`
+- `release/sentryvault.deb`
 
 ## Scripts disponibles
 

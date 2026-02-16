@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Servidor Flask para sistema de protección de información
-Especializado para inteligencia militar con cifrado extremo
+Servidor Flask para SentryVault
+Sistema de protección de información con cifrado extremo
 """
 
 import os
@@ -93,12 +93,12 @@ def create_app(config_name=None):
     swagger_template = {
         "swagger": "2.0",
         "info": {
-            "title": "Inteligencia militar Zero Trust API",
-            "description": "API REST para gestión segura de archivos militares clasificados con cifrado extremo",
+            "title": "SentryVault API",
+            "description": "API REST para gestión segura de secretos",
             "contact": {
-                "responsibleOrganization": "Inteligencia Militar",
+                "responsibleOrganization": "SentryVault",
                 "responsibleDeveloper": "Equipo de Seguridad",
-                "email": "security@protecci-n2025.mil",
+                "email": "security@sentryvault.app",
             },
             "version": "1.0.0"
         },
@@ -191,9 +191,9 @@ def create_app(config_name=None):
                   type: object
         """
         return jsonify({
-            'name': 'Inteligencia militar Zero Trust',
+            'name': 'SentryVault',
             'version': '1.0.0',
-            'description': 'Servidor seguro para intercambio de información militar clasificada',
+            'description': 'Servidor seguro para gestión de secretos',
             'security_features': [
                 'RSA-4096 criptografía asimétrica',
                 'AES-256-CTR cifrado de archivos',
@@ -248,7 +248,7 @@ def create_app(config_name=None):
     def docs():
         """Documentación de la API"""
         return jsonify({
-            'title': 'Inteligencia militar Zero Trust API',
+            'title': 'SentryVault API',
             'version': '1.0.0',
             'description': 'API para gestión segura de archivos clasificados',
             'authentication': 'JWT Bearer Token',
@@ -422,7 +422,7 @@ if __name__ == '__main__':
         protocol = "http"
     
     print(f"""
-🚀 Iniciando Servidor de Inteligencia Militar Zero Trust
+🚀 Iniciando Servidor SentryVault
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📍 Servidor: {protocol}://localhost:{port}

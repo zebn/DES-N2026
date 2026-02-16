@@ -68,7 +68,7 @@ class Config:
     ACCOUNT_LOCKOUT_TIME = timedelta(minutes=int(os.environ.get('ACCOUNT_LOCKOUT_MINUTES', '30')))
     
     # CORS
-    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:4200,https://milcom.vercel.app').split(',')
+    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:4200,https://sentryvault.vercel.app').split(',')
 
 class DevelopmentConfig(Config):
     """Configuración para desarrollo"""
