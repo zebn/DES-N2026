@@ -64,8 +64,8 @@ npm run build:mac
 ```
 
 **Результат:**
-- `release/MILCOM Secure Exchange-1.0.0.dmg` (~150 MB)
-- `release/MILCOM Secure Exchange-1.0.0-mac.zip` (~140 MB)
+- `release/SentryVault-1.0.0.dmg` (~150 MB)
+- `release/SentryVault-1.0.0-mac.zip` (~140 MB)
 
 ---
 
@@ -73,13 +73,13 @@ npm run build:mac
 
 | Файл | Размер | Описание |
 |------|--------|----------|
-| `MILCOM Secure Exchange.dmg` | ~150 MB | Установщик с drag-and-drop |
-| `MILCOM Secure Exchange-mac.zip` | ~140 MB | Архив приложения |
+| `SentryVault.dmg` | ~150 MB | Установщик с drag-and-drop |
+| `SentryVault-mac.zip` | ~140 MB | Архив приложения |
 
 ### Установка на Mac:
 
 1. Открыть `.dmg` файл
-2. Перетащить `MILCOM Secure Exchange.app` в `/Applications`
+2. Перетащить `SentryVault.app` в `/Applications`
 3. Первый запуск: Ctrl+Click → Open (обход Gatekeeper)
 
 ---
@@ -137,9 +137,9 @@ npm run build:linux
 ```
 
 **Результат:**
-- `MILCOM Secure Exchange-1.0.0.AppImage` - Universal (работает везде)
-- `milcom-secure-exchange_1.0.0_amd64.deb` - Для Ubuntu/Debian
-- `MILCOM Secure Exchange-1.0.0.tar.gz` - Архив
+- `SentryVault-1.0.0.AppImage` - Universal (работает везде)
+- `sentryvault_1.0.0_amd64.deb` - Для Ubuntu/Debian
+- `SentryVault-1.0.0.tar.gz` - Архив
 
 ---
 
