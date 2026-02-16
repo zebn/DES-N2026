@@ -42,8 +42,11 @@ def create_app(config_name=None):
     
     # CORS - Permitir Swagger UI y Angular en cualquier puerto localhost
     if config_name == 'development':
-        # En desarrollo, permitir cualquier puerto localhost
-        cors_origins = [r'http://localhost:\d+', r'http://127\.0\.0\.1:\d+']
+        # En desarrollo, permitir cualquier puerto localhost (http y https)
+        cors_origins = [
+            r'https?://localhost:\d+',
+            r'https?://127\.0\.0\.1:\d+'
+        ]
     else:
         # En producción, usar solo orígenes configurados
         cors_origins = app.config.get('CORS_ORIGINS', ['http://localhost:3000'])
