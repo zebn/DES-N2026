@@ -16,7 +16,7 @@ import { AuthService } from './core/services/auth.service';
         
         <span class="app-title">
           <mat-icon class="shield-icon">shield</mat-icon>
-          MILCOM secure exchange - Inteligencia militar "Zero Trust"
+          SentryVault - Protege tu información más secreta
         </span>
         
         <span class="spacer"></span>
@@ -54,6 +54,13 @@ import { AuthService } from './core/services/auth.service';
             <a mat-list-item routerLink="/files/shared" routerLinkActive="active-link">
               <mat-icon matListItemIcon>people</mat-icon>
               <span matListItemTitle>Compartidos</span>
+            </a>
+            
+            <mat-divider></mat-divider>
+
+            <a mat-list-item routerLink="/secrets" routerLinkActive="active-link">
+              <mat-icon matListItemIcon>lock</mat-icon>
+              <span matListItemTitle>Bóveda de Secretos</span>
             </a>
             
             <mat-divider></mat-divider>

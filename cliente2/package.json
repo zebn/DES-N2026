@@ -2,8 +2,8 @@
   "name": "protecci-n-client",
   "version": "1.0.0",
   "main": "electron.js",
-  "description": "Sistema de Protección de Información Clasificada - Cliente Desktop",
-  "author": "MILCOM Security Team",
+  "description": "Sistema de Gestión de claves - Cliente Desktop",
+  "author": "SentryVaultVault - Protege tu información más secreta",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -55,8 +55,8 @@
     "wait-on": "^7.2.0"
   },
   "build": {
-    "appId": "com.milcom.protecci-n",
-    "productName": "MILCOM Secure Exchange",
+    "appId": "com.sentryvault.app",
+    "productName": "SentryVault protege tu información",
     "directories": {
       "output": "release"
     },
@@ -92,7 +92,7 @@
       ],
       "icon": "src/favicon.ico",
       "category": "Office",
-      "executableName": "milcom-secure-exchange"
+      "executableName": "sentryvault"
     },
     "nsis": {
       "oneClick": false,
