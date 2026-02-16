@@ -16,7 +16,7 @@ import { AuthService } from './core/services/auth.service';
         
         <span class="app-title">
           <mat-icon class="shield-icon">shield</mat-icon>
-          MILCOM secure exchange - Inteligencia militar "Zero Trust"
+          SentryVault - Protege tu información más secreta
         </span>
         
         <span class="spacer"></span>

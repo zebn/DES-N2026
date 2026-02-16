@@ -23,7 +23,7 @@ import { Component, OnInit, OnDestroy, Output, EventEmitter } from '@angular/cor
         </div>
 
         <!-- Title -->
-        <h1 class="title">SISTEMA DE PROTECCIÓN</h1>
+        <h1 class="title">SENTRYVAULT</h1>
         <p class="subtitle">Inicializando módulos de seguridad</p>
 
         <!-- Crypto Badges -->

@@ -1,4 +1,4 @@
-# 🚀 MILCOM Secure Exchange - Быстрый старт
+# 🚀 SentryVault - Быстрый старт
 
 ## ✅ Готовые команды
 
@@ -15,8 +15,8 @@ npm run dev
 npm run build:exe
 ```
 **Результат:**
-- ✅ `release/MILCOM Secure Exchange Setup 1.0.0.exe` (90 MB) - Installer
-- ✅ `release/MILCOM Secure Exchange 1.0.0.exe` (90 MB) - Portable
+- ✅ `release/SentryVault Setup 1.0.0.exe` (90 MB) - Installer
+- ✅ `release/SentryVault 1.0.0.exe` (90 MB) - Portable
 
 **Время сборки:** ~2-3 минуты
 
@@ -26,25 +26,25 @@ npm run build:exe
 
 | Файл | Размер | Описание |
 |------|--------|----------|
-| **MILCOM Secure Exchange Setup 1.0.0.exe** | ~90 MB | Installer NSIS с выбором директории |
-| **MILCOM Secure Exchange 1.0.0.exe** | ~90 MB | Portable версия (не требует установки) |
+| **SentryVault Setup 1.0.0.exe** | ~90 MB | Installer NSIS с выбором директории |
+| **SentryVault 1.0.0.exe** | ~90 MB | Portable версия (не требует установки) |
 
 ---
 
 ## 🎯 Использование
 
 ### Installer (Setup)
-1. Запустить `MILCOM Secure Exchange Setup 1.0.0.exe`
+1. Запустить `SentryVault Setup 1.0.0.exe`
 2. Выбрать папку установки
 3. Приложение устанавливается в:
-   - `C:\Program Files\MILCOM Secure Exchange\`
+   - `C:\Program Files\SentryVault\`
 4. Создаются ярлыки:
    - Рабочий стол
    - Меню Пуск
 5. Можно удалить через "Установка и удаление программ"
 
 ### Portable
-1. Скопировать `MILCOM Secure Exchange 1.0.0.exe` куда угодно (USB, Desktop, etc.)
+1. Скопировать `SentryVault 1.0.0.exe` куда угодно (USB, Desktop, etc.)
 2. Двойной клик для запуска
 3. Не требует прав администратора
 4. Не оставляет следов в реестре
@@ -73,8 +73,8 @@ dist/protecci-n-client/
 electron-builder --win --x64
 ↓
 release/
-  ├── MILCOM Secure Exchange Setup 1.0.0.exe (Installer)
-  └── MILCOM Secure Exchange 1.0.0.exe (Portable)
+  ├── SentryVault Setup 1.0.0.exe (Installer)
+  └── SentryVault 1.0.0.exe (Portable)
 ```
 
 ---
@@ -85,7 +85,7 @@ release/
 ```bash
 npm run build:portable
 ```
-Результат: только `MILCOM Secure Exchange 1.0.0.exe`
+Результат: только `SentryVault 1.0.0.exe`
 
 ### Сборка для macOS
 ```bash
@@ -121,8 +121,8 @@ cliente2/
 │       └── ...
 │
 ├── release/                 # Executable файлы (создается автоматически)
-│   ├── MILCOM Secure Exchange Setup 1.0.0.exe
-│   ├── MILCOM Secure Exchange 1.0.0.exe
+│   ├── SentryVault Setup 1.0.0.exe
+│   ├── SentryVault 1.0.0.exe
 │   └── win-unpacked/       # Распакованная версия
 │
 ├── src/                     # Исходники Angular
@@ -196,7 +196,7 @@ npm run build:exe
 1. Проверь антивирус
 2. Запусти из командной строки чтобы увидеть ошибки:
 ```bash
-.\release\MILCOM Secure Exchange 1.0.0.exe
+.\release\SentryVault 1.0.0.exe
 ```
 
 ### DevTools открывается в production
@@ -243,4 +243,4 @@ npm run build:exe
 
 **Версия:** 1.0.0  
 **Дата:** Ноябрь 2025  
-**Автор:** MILCOM Security Team
+**Автор:** SentryVault Security Team

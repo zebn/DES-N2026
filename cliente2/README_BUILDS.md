@@ -1,4 +1,4 @@
-# 🚀 MILCOM Secure Exchange - Guía de Compilación
+# 🚀 SentryVault - Guía de Compilación
 
 ## 📋 Comandos Principales
 
@@ -18,15 +18,15 @@ npm run dev
 npm run build:exe
 ```
 **Resultado:**
-- 📦 `release/MILCOM Secure Exchange Setup.exe` (~150 MB) - Instalador NSIS
-- 📦 `release/MILCOM Secure Exchange.exe` (~200 MB) - Versión portable
+- 📦 `release/SentryVault Setup.exe` (~150 MB) - Instalador NSIS
+- 📦 `release/SentryVault.exe` (~200 MB) - Versión portable
 
 #### Solo Portable (más rápido)
 ```bash
 npm run build:portable
 ```
 **Resultado:**
-- 📦 `release/MILCOM Secure Exchange.exe` - Solo versión portable
+- 📦 `release/SentryVault.exe` - Solo versión portable
 
 ### Compilar para múltiples plataformas
 ```bash
@@ -63,8 +63,8 @@ cliente2/
 │       ├── main.*.js
 │       └── ...
 ├── release/                       # Ejecutables (generado)
-│   ├── MILCOM Secure Exchange Setup.exe
-│   └── MILCOM Secure Exchange.exe
+│   ├── SentryVault Setup.exe
+│   └── SentryVault.exe
 ├── electron.js                    # Proceso principal Electron
 ├── start-electron-dev.js          # Script para desarrollo
 └── package.json                   # Configuración
@@ -79,8 +79,8 @@ cliente2/
 ```json
 {
   "build": {
-    "appId": "com.milcom.protecci-n",
-    "productName": "MILCOM Secure Exchange",
+    "appId": "com.sentryvault.protecci-n",
+    "productName": "SentryVault",
     "files": [
       "dist/**/*",           // Archivos Angular compilados
       "electron.js",          // Proceso principal
@@ -145,7 +145,7 @@ npm run build:prod
 1. Verifica que no haya antivirus bloqueando
 2. Ejecuta desde terminal para ver errores:
    ```bash
-   .\release\MILCOM Secure Exchange.exe
+   .\release\SentryVault.exe
    ```
 
 ### DevTools no se cierra en producción
@@ -180,15 +180,15 @@ Configurable en `src/environments/environment.ts` y `environment.prod.ts`
 
 ### Instalador (recomendado para usuarios finales)
 ```
-MILCOM Secure Exchange Setup.exe
+SentryVault Setup.exe
 ```
-- Se instala en `C:\Program Files\MILCOM Secure Exchange\`
+- Se instala en `C:\Program Files\SentryVault\`
 - Crea accesos directos
 - Permite desinstalar desde Panel de Control
 
 ### Portable (recomendado para USB/pruebas)
 ```
-MILCOM Secure Exchange.exe
+SentryVault.exe
 ```
 - No requiere instalación
 - Ejecutable único
