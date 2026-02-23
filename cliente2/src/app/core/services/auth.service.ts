@@ -5,11 +5,14 @@ import { tap } from 'rxjs/operators';
 import { CryptoService } from './crypto.service';
 import { environment } from '../../../environments/environment';
 
+export type UserRole = 'ADMIN' | 'MANAGER' | 'USER' | 'AUDITOR';
+
 export interface User {
   id: number;
   email: string;
   nombre: string;
   apellidos: string;
+  role: UserRole;
   clearance_level: string;
   is_admin: boolean;
   is_active: boolean;
@@ -197,11 +200,42 @@ export class AuthService {
     return this.http.get<{ users: User[] }>(`${environment.apiUrl}/api/auth/users`);
   }
 
-  getUserPublicKey(email: string): Observable<{ email: string; public_key: string; is_active: boolean; clearance_level: string }> {
-    return this.http.post<{ email: string; public_key: string; is_active: boolean; clearance_level: string }>(
+  getUserPublicKey(email: string): Observable<{ email: string; public_key: string; is_active: boolean; role: string; clearance_level: string }> {
+    return this.http.post<{ email: string; public_key: string; is_active: boolean; role: string; clearance_level: string }>(
       `${environment.apiUrl}/api/auth/user/public-key`,
       { email }
     );
+  }
+
+  // ===== RBAC Methods =====
+
+  /**
+   * Comprobar si el usuario actual tiene uno de los roles indicados
+   */
+  hasRole(...roles: UserRole[]): boolean {
+    const user = this.currentUserSubject.value;
+    return !!user && roles.includes(user.role);
+  }
+
+  /**
+   * Comprobar si el usuario actual es administrador
+   */
+  isAdmin(): boolean {
+    return this.hasRole('ADMIN');
+  }
+
+  /**
+   * Obtener los roles disponibles del sistema
+   */
+  getRoles(): Observable<any> {
+    return this.http.get(`${environment.apiUrl}/api/auth/roles`);
+  }
+
+  /**
+   * Cambiar el rol de un usuario (solo ADMIN)
+   */
+  changeUserRole(userId: number, role: UserRole): Observable<any> {
+    return this.http.put(`${environment.apiUrl}/api/auth/users/${userId}/role`, { role });
   }
 
   // ===== 2FA Methods =====

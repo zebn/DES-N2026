@@ -1,10 +1,11 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
+import { AuthGuard } from './core/guards/auth.guard';
 
 const routes: Routes = [
   {
     path: '',
-    redirectTo: '/files',
+    redirectTo: '/secrets',
     pathMatch: 'full'
   },
   {
@@ -13,15 +14,18 @@ const routes: Routes = [
   },
   {
     path: 'files',
-    loadChildren: () => import('./features/files/files.module').then(m => m.FilesModule)
+    loadChildren: () => import('./features/files/files.module').then(m => m.FilesModule),
+    canActivate: [AuthGuard]
   },
   {
     path: 'secrets',
-    loadChildren: () => import('./features/secrets/secrets.module').then(m => m.SecretsModule)
+    loadChildren: () => import('./features/secrets/secrets.module').then(m => m.SecretsModule),
+    canActivate: [AuthGuard]
   },
   {
     path: 'profile',
-    loadChildren: () => import('./features/profile/profile.module').then(m => m.ProfileModule)
+    loadChildren: () => import('./features/profile/profile.module').then(m => m.ProfileModule),
+    canActivate: [AuthGuard]
   }
 ];
 

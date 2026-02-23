@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from './core/services/auth.service';
+import { AuthService, User } from './core/services/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -64,6 +64,15 @@ import { AuthService } from './core/services/auth.service';
             </a>
             
             <mat-divider></mat-divider>
+
+            <!-- Admin-only section -->
+            <ng-container *ngIf="authService.isAdmin()">
+              <a mat-list-item routerLink="/files" routerLinkActive="active-link" [queryParams]="{admin: true}">
+                <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
+                <span matListItemTitle>Panel Admin</span>
+              </a>
+              <mat-divider></mat-divider>
+            </ng-container>
             
             <a mat-list-item routerLink="/profile" routerLinkActive="active-link">
               <mat-icon matListItemIcon>person</mat-icon>
@@ -142,7 +151,7 @@ export class AppComponent implements OnInit {
   showSplash = true;
 
   constructor(
-    private authService: AuthService,
+    public authService: AuthService,
     private router: Router
   ) { }
 
