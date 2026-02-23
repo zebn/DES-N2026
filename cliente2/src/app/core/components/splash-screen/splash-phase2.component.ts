@@ -5,8 +5,9 @@ import { Component, OnInit, OnDestroy, AfterViewInit, Output, EventEmitter, Inpu
     template: `
     <div class="splash-container">
       <div class="content-wrapper">
-        <h1 class="title">FASE 2 - CONECTANDO AL SERVIDOR</h1>
-        <div class="server-url">{{ serverInfo?.host || 'Cargando...' }}</div>
+        <h1 class="title">CONECTANDO AL SERVIDOR</h1>
+        <div class="server-name">SentryVault</div>
+        <div class="server-url">{{ serverInfo?.url || 'Cargando...' }}</div>
         <div class="progress-text">{{ progress.toFixed(0) }}%</div>
         <div class="loading-step">{{ currentStepText }}</div>
       </div>
@@ -39,10 +40,20 @@ import { Component, OnInit, OnDestroy, AfterViewInit, Output, EventEmitter, Inpu
       text-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
     }
 
+    .server-name {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #ffd700;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    }
+
     .server-url {
-      font-size: 1.2rem;
+      font-size: 1rem;
       color: #00ff00;
+      font-family: monospace;
       margin-bottom: 2rem;
+      opacity: 0.85;
     }
 
     .progress-text {
