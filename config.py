@@ -50,13 +50,17 @@ class Config:
         'mp3', 'wav', 'flac'
     }
     
-    # Niveles de clasificación
+    # Niveles de clasificación (legacy, se mantiene para compatibilidad)
     CLASSIFICATION_LEVELS = {
         'RESTRICTED': 1,
         'CONFIDENTIAL': 2, 
         'SECRET': 3,
         'TOP_SECRET': 4
     }
+    
+    # Roles RBAC válidos
+    RBAC_ROLES = ['ADMIN', 'MANAGER', 'USER', 'AUDITOR']
+    DEFAULT_ROLE = 'USER'
     
     # Configuración 2FA
     TOTP_ISSUER = os.environ.get('TOTP_ISSUER', 'Proteccion_Informacion').replace('_', ' ')

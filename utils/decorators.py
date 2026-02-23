@@ -1,6 +1,6 @@
 """
 Decoradores de autorización y auditoría reutilizables.
-Extraídos y mejorados a partir de require_clearance() en routes/files.py.
+Sistema RBAC con roles: ADMIN, MANAGER, USER, AUDITOR.
 """
 
 import functools
@@ -24,8 +24,8 @@ def require_role(*allowed_roles: str):
         def mi_endpoint():
             ...
 
-    Nota: por ahora comprueba `is_admin` y `clearance_level` del modelo actual.
-    Cuando se migre a un campo `role` Enum, sólo habrá que cambiar este decorador.
+    Los roles válidos son: ADMIN, MANAGER, USER, AUDITOR.
+    Comprueba el campo `role` (Enum UserRole) del modelo User.
     """
     def decorator(fn):
         @functools.wraps(fn)
@@ -36,13 +36,11 @@ def require_role(*allowed_roles: str):
             if not user or not user.is_active:
                 return jsonify({'error': 'Usuario no encontrado o desactivado'}), 403
 
-            # Mapeo provisional: is_admin → ADMIN, resto → USER
-            user_role = 'ADMIN' if user.is_admin else 'USER'
-
-            if user_role not in allowed_roles:
+            if not user.has_role(*allowed_roles):
                 return jsonify({
                     'error': 'No tiene permisos para esta acción',
                     'required_roles': list(allowed_roles),
+                    'current_role': user.role.value,
                 }), 403
 
             return fn(*args, **kwargs)
