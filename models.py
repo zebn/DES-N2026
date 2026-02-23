@@ -11,6 +11,14 @@ bcrypt = Bcrypt()
 
 # ─── Enums ────────────────────────────────────────────────────────────────────
 
+class UserRole(enum.Enum):
+    """Roles del sistema RBAC"""
+    ADMIN = 'ADMIN'
+    MANAGER = 'MANAGER'
+    USER = 'USER'
+    AUDITOR = 'AUDITOR'
+
+
 class SecretType(enum.Enum):
     """Tipos de secreto soportados"""
     PASSWORD = 'PASSWORD'
@@ -43,9 +51,12 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     salt = db.Column(db.String(64), nullable=False)
     
-    # Autorización y roles
-    is_admin = db.Column(db.Boolean, default=False)
+    # Autorización y roles (RBAC)
+    role = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.USER)
     is_active = db.Column(db.Boolean, default=True)
+
+    # Campos legacy — se mantienen para compatibilidad durante migración
+    is_admin = db.Column(db.Boolean, default=False)
     clearance_level = db.Column(db.String(20), default='CONFIDENTIAL')
     
     # Criptografía asimétrica (generada en cliente)
@@ -95,8 +106,20 @@ class User(db.Model):
         """Obtener parámetros de derivación de clave como dict"""
         return json.loads(self.key_derivation_params)
     
+    @property
+    def is_admin_role(self):
+        """Comprobar si el usuario tiene rol ADMIN (sustituye is_admin)"""
+        return self.role == UserRole.ADMIN
+
+    def has_role(self, *roles: str) -> bool:
+        """Verificar si el usuario tiene uno de los roles indicados.
+
+        Acepta nombres de rol como strings (e.g. 'ADMIN', 'MANAGER').
+        """
+        return self.role.value in roles
+
     def has_clearance(self, required_level):
-        """Verificar si el usuario tiene el nivel de autorización requerido"""
+        """Verificar si el usuario tiene el nivel de autorización requerido (legacy)"""
         levels = {'RESTRICTED': 1, 'CONFIDENTIAL': 2, 'SECRET': 3, 'TOP_SECRET': 4}
         user_level = levels.get(self.clearance_level, 0)
         required = levels.get(required_level, 4)
@@ -110,8 +133,9 @@ class User(db.Model):
             'apellidos': self.apellidos,
             'email': self.email,
             'telefono': self.telefono,
+            'role': self.role.value if self.role else 'USER',
             'clearance_level': self.clearance_level,
-            'is_admin': self.is_admin,
+            'is_admin': self.role == UserRole.ADMIN if self.role else self.is_admin,
             'is_active': self.is_active,
             'is_2fa_enabled': self.is_2fa_enabled,
             'public_key': self.public_key,

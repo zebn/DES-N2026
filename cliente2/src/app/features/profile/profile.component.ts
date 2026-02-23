@@ -41,11 +41,11 @@ import { FormControl, Validators } from '@angular/forms';
                   {{ user?.is_active ? 'Activo' : 'Inactivo' }}
                 </mat-chip>
               </div>
-              <div class="info-item" *ngIf="user?.is_admin">
+              <div class="info-item">
                 <label>Rol</label>
-                <mat-chip color="accent">
-                  <mat-icon>admin_panel_settings</mat-icon>
-                  Administrador
+                <mat-chip [class]="'role-' + user?.role?.toLowerCase()">
+                  <mat-icon>{{ getRoleIcon(user?.role) }}</mat-icon>
+                  {{ getRoleLabel(user?.role) }}
                 </mat-chip>
               </div>
             </div>
@@ -390,5 +390,25 @@ export class ProfileComponent implements OnInit {
                 this.disableCode.reset();
             }
         });
+    }
+
+    getRoleIcon(role: string | undefined): string {
+        const icons: Record<string, string> = {
+            'ADMIN': 'admin_panel_settings',
+            'MANAGER': 'manage_accounts',
+            'USER': 'person',
+            'AUDITOR': 'visibility'
+        };
+        return icons[role || ''] || 'person';
+    }
+
+    getRoleLabel(role: string | undefined): string {
+        const labels: Record<string, string> = {
+            'ADMIN': 'Administrador',
+            'MANAGER': 'Gestor',
+            'USER': 'Usuario',
+            'AUDITOR': 'Auditor'
+        };
+        return labels[role || ''] || role || 'Usuario';
     }
 }
