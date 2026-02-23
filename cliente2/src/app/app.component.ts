@@ -67,7 +67,7 @@ import { AuthService, User } from './core/services/auth.service';
 
             <!-- Admin-only section -->
             <ng-container *ngIf="authService.isAdmin()">
-              <a mat-list-item routerLink="/files" routerLinkActive="active-link" [queryParams]="{admin: true}">
+              <a mat-list-item routerLink="/admin" routerLinkActive="active-link">
                 <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
                 <span matListItemTitle>Panel Admin</span>
               </a>

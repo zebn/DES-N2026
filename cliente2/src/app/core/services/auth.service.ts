@@ -238,6 +238,27 @@ export class AuthService {
     return this.http.put(`${environment.apiUrl}/api/auth/users/${userId}/role`, { role });
   }
 
+  /**
+   * Listar todos los usuarios del sistema (solo ADMIN)
+   */
+  listUsers(): Observable<any> {
+    return this.http.get(`${environment.apiUrl}/api/auth/users`);
+  }
+
+  /**
+   * Activar un usuario (solo ADMIN)
+   */
+  activateUser(userId: number): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/api/auth/users/${userId}/activate`, {});
+  }
+
+  /**
+   * Desactivar un usuario (solo ADMIN)
+   */
+  deactivateUser(userId: number): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/api/auth/users/${userId}/deactivate`, {});
+  }
+
   // ===== 2FA Methods =====
 
   /**
