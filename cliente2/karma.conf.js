@@ -1,6 +1,10 @@
 // Karma configuration file
 // See https://karma-runner.github.io/latest/config/configuration-file.html
 
+// Usar Edge como navegador (Chromium-based) si Chrome no está instalado
+process.env.CHROME_BIN = process.env.CHROME_BIN
+  || 'C:\\Program Files (x86)\\Microsoft\\EdgeCore\\145.0.3800.82\\msedge.exe';
+
 module.exports = function (config) {
   config.set({
     basePath: '',
