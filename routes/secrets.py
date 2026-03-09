@@ -63,11 +63,8 @@ def _audit(user_id, action, resource_type, resource_id=None, details=None, succe
         user_id=user_id,
         action=action,
         resource_type=resource_type,
-        resource_id=None,  # resource_id es Integer en AuditLog, secrets usan UUID string
-        details=json.dumps({
-            'secret_id': resource_id,
-            **(details or {}),
-        }),
+        resource_id=str(resource_id) if resource_id else None,
+        details=json.dumps(details) if details else None,
         ip_address=request.remote_addr,
         user_agent=request.headers.get('User-Agent'),
         success=success,
