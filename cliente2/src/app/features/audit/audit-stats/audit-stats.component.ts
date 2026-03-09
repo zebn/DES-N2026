@@ -488,19 +488,21 @@ export class AuditStatsComponent implements OnInit {
     if (!this.stats) return;
 
     // Sort actions by count descending
-    this.actionsSorted = Object.entries(this.stats.actions_count)
+    const actionsObj = this.stats.actions_count || {};
+    this.actionsSorted = Object.entries(actionsObj)
       .map(([action, count]) => ({ action, count }))
       .sort((a, b) => b.count - a.count);
 
     this.maxActionCount = this.actionsSorted.length > 0
       ? this.actionsSorted[0].count : 1;
 
-    this.maxDayCount = this.stats.events_by_day.length > 0
-      ? Math.max(...this.stats.events_by_day.map(d => d.count)) : 1;
+    const days = this.stats.events_by_day || [];
+    this.maxDayCount = days.length > 0
+      ? Math.max(...days.map(d => d.count)) : 1;
   }
 
   getUniqueActions(): number {
-    return this.stats ? Object.keys(this.stats.actions_count).length : 0;
+    return this.stats?.actions_count ? Object.keys(this.stats.actions_count).length : 0;
   }
 
   getBarWidth(count: number): number {
