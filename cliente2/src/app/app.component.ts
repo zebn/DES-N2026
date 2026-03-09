@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from './core/services/auth.service';
+import { AuthService, User } from './core/services/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -16,7 +16,7 @@ import { AuthService } from './core/services/auth.service';
         
         <span class="app-title">
           <mat-icon class="shield-icon">shield</mat-icon>
-          MILCOM secure exchange - Inteligencia militar "Zero Trust"
+          SentryVault - Protege tu información más secreta
         </span>
         
         <span class="spacer"></span>
@@ -57,6 +57,22 @@ import { AuthService } from './core/services/auth.service';
             </a>
             
             <mat-divider></mat-divider>
+
+            <a mat-list-item routerLink="/secrets" routerLinkActive="active-link">
+              <mat-icon matListItemIcon>lock</mat-icon>
+              <span matListItemTitle>Bóveda de Secretos</span>
+            </a>
+            
+            <mat-divider></mat-divider>
+
+            <!-- Admin-only section -->
+            <ng-container *ngIf="authService.isAdmin()">
+              <a mat-list-item routerLink="/admin" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
+                <span matListItemTitle>Panel Admin</span>
+              </a>
+              <mat-divider></mat-divider>
+            </ng-container>
             
             <a mat-list-item routerLink="/profile" routerLinkActive="active-link">
               <mat-icon matListItemIcon>person</mat-icon>
@@ -135,7 +151,7 @@ export class AppComponent implements OnInit {
   showSplash = true;
 
   constructor(
-    private authService: AuthService,
+    public authService: AuthService,
     private router: Router
   ) { }
 

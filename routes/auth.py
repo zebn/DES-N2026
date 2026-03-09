@@ -11,9 +11,10 @@ from flask_jwt_extended import create_access_token, create_refresh_token, jwt_re
 from werkzeug.exceptions import BadRequest
 from sqlalchemy.exc import IntegrityError
 
-from models import db, User, AuditLog
+from models import db, User, UserRole, AuditLog
 from utils.crypto import crypto_manager
 from utils.totp import two_factor_auth
+from utils.decorators import require_role as _require_role_decorator
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -110,16 +111,28 @@ def register():
         if User.query.filter_by(email=data['email']).first():
             return jsonify({'error': 'El usuario ya existe'}), 400
         
-        # Validar nivel de autorización
+        # Validar nivel de autorización (legacy, se mantiene por compatibilidad)
         clearance_level = data.get('clearance_level', 'CONFIDENTIAL')
         if clearance_level not in current_app.config['CLASSIFICATION_LEVELS']:
             return jsonify({'error': 'Nivel de autorización inválido'}), 400
+        
+        # Validar rol RBAC
+        role_str = data.get('role', 'USER').upper()
+        try:
+            user_role = UserRole(role_str)
+        except ValueError:
+            return jsonify({'error': f'Rol inválido: {role_str}. Válidos: ADMIN, MANAGER, USER, AUDITOR'}), 400
         
         # Generar sal para la contraseña
         salt = crypto_manager.secure_random_string(32)
         
         # Generar secreto TOTP
         totp_secret = two_factor_auth.totp.generate_secret()
+        
+        # Derivar is_admin del rol para compatibilidad legacy
+        is_admin_flag = (user_role == UserRole.ADMIN) or data.get('is_admin', False)
+        if is_admin_flag:
+            user_role = UserRole.ADMIN
         
         # Crear usuario
         user = User(
@@ -128,12 +141,13 @@ def register():
             email=data['email'],
             telefono=data.get('telefono'),
             salt=salt,
+            role=user_role,
             clearance_level=clearance_level,
             public_key=data['public_key'],
             private_key_encrypted=data['encrypted_private_key'],
             key_derivation_params=data['key_derivation_params'],
             totp_secret=totp_secret,
-            is_admin=data.get('is_admin', False)
+            is_admin=is_admin_flag
         )
         
         # Establecer contraseña con hash
@@ -160,6 +174,7 @@ def register():
             'message': 'Usuario registrado exitosamente',
             'user_id': user.id,
             'email': user.email,
+            'role': user.role.value,
             'clearance_level': user.clearance_level,
             'public_key': user.public_key
         }), 201
@@ -326,8 +341,9 @@ def login():
             identity=str(user.id),
             additional_claims={
                 'email': user.email,
+                'role': user.role.value,
                 'clearance_level': user.clearance_level,
-                'is_admin': user.is_admin
+                'is_admin': user.role == UserRole.ADMIN
             }
         )
         
@@ -336,7 +352,7 @@ def login():
         # Debug: verificar token inmediatamente
         import os
         if os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes'):
-            print(f"[DEBUG LOGIN] Token creado para user_id={user.id}, token={access_token[:50]}...")
+            print(f"[DEBUG LOGIN] Token creado para user_id={user.id}, role={user.role.value}, token={access_token[:50]}...")
         
         db.session.commit()
         
@@ -627,8 +643,9 @@ def refresh():
             identity=str(user.id),
             additional_claims={
                 'email': user.email,
+                'role': user.role.value,
                 'clearance_level': user.clearance_level,
-                'is_admin': user.is_admin
+                'is_admin': user.role == UserRole.ADMIN
             }
         )
         
@@ -778,9 +795,9 @@ def list_users():
         if not user:
             return jsonify({'error': 'Usuario no encontrado'}), 404
         
-        # Verificar que sea administrador
-        if not user.is_admin:
-            return jsonify({'error': 'Acceso denegado: se requieren permisos de administrador'}), 403
+        # Verificar que sea administrador (RBAC)
+        if not user.has_role('ADMIN'):
+            return jsonify({'error': 'Acceso denegado: se requiere rol ADMIN'}), 403
         
         # Obtener todos los usuarios
         users = User.query.all()
@@ -822,9 +839,9 @@ def activate_user(user_id):
         if not admin:
             return jsonify({'error': 'Usuario no encontrado'}), 404
         
-        # Verificar que sea administrador
-        if not admin.is_admin:
-            return jsonify({'error': 'Acceso denegado: se requieren permisos de administrador'}), 403
+        # Verificar que sea administrador (RBAC)
+        if not admin.has_role('ADMIN'):
+            return jsonify({'error': 'Acceso denegado: se requiere rol ADMIN'}), 403
         
         # Buscar el usuario a activar
         target_user = User.query.get(user_id)
@@ -887,9 +904,9 @@ def deactivate_user(user_id):
         if not admin:
             return jsonify({'error': 'Usuario no encontrado'}), 404
         
-        # Verificar que sea administrador
-        if not admin.is_admin:
-            return jsonify({'error': 'Acceso denegado: se requieren permisos de administrador'}), 403
+        # Verificar que sea administrador (RBAC)
+        if not admin.has_role('ADMIN'):
+            return jsonify({'error': 'Acceso denegado: se requiere rol ADMIN'}), 403
         
         # No permitir desactivarse a sí mismo
         if admin_id == user_id:
@@ -986,8 +1003,157 @@ def get_user_public_key():
             'email': user.email,
             'public_key': user.public_key,
             'is_active': user.is_active,
+            'role': user.role.value,
             'clearance_level': user.clearance_level
         }), 200
     
     except Exception as e:
         return jsonify({'error': f'Error obteniendo clave pública: {str(e)}'}), 500
+
+
+# ─── Gestión de roles RBAC ────────────────────────────────────────────────────
+
+@auth_bp.route('/roles', methods=['GET'])
+@jwt_required()
+def list_roles():
+    """
+    Listar roles disponibles y sus permisos
+    ---
+    tags:
+      - rbac
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Lista de roles y permisos
+    """
+    roles = {
+        'ADMIN': {
+            'description': 'Administrador del sistema',
+            'permissions': [
+                'CRUD usuarios', 'CRUD grupos', 'ver auditorías globales',
+                'gestionar roles', 'backup/restore', 'CRUD secretos propios'
+            ]
+        },
+        'MANAGER': {
+            'description': 'Gestor de equipos',
+            'permissions': [
+                'crear grupos', 'gestionar miembros de sus grupos',
+                'compartir secretos con sus grupos', 'CRUD secretos propios',
+                'ver auditorías de sus grupos'
+            ]
+        },
+        'USER': {
+            'description': 'Usuario estándar',
+            'permissions': [
+                'CRUD secretos propios',
+                'compartir secretos con usuarios/grupos donde participa',
+                'ver auditorías propias'
+            ]
+        },
+        'AUDITOR': {
+            'description': 'Auditor (solo lectura de logs)',
+            'permissions': [
+                'lectura de auditorías y logs (sin acceso a secretos)',
+                'generar informes de actividad'
+            ]
+        },
+    }
+    return jsonify({'roles': roles}), 200
+
+
+@auth_bp.route('/users/<int:target_user_id>/role', methods=['PUT'])
+@jwt_required()
+def change_user_role(target_user_id):
+    """
+    Cambiar el rol de un usuario (solo ADMIN)
+    ---
+    tags:
+      - rbac
+    security:
+      - Bearer: []
+    parameters:
+      - name: target_user_id
+        in: path
+        type: integer
+        required: true
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - role
+          properties:
+            role:
+              type: string
+              enum: [ADMIN, MANAGER, USER, AUDITOR]
+    responses:
+      200:
+        description: Rol actualizado
+      400:
+        description: Rol inválido
+      403:
+        description: No autorizado
+      404:
+        description: Usuario no encontrado
+    """
+    try:
+        admin_id = get_current_user_id()
+        admin = User.query.get(admin_id)
+
+        if not admin or not admin.has_role('ADMIN'):
+            return jsonify({'error': 'Acceso denegado: se requiere rol ADMIN'}), 403
+
+        target_user = User.query.get(target_user_id)
+        if not target_user:
+            return jsonify({'error': 'Usuario no encontrado'}), 404
+
+        # No permitir cambiar el rol a sí mismo (evitar quedarse sin admin)
+        if admin_id == target_user_id:
+            return jsonify({'error': 'No puedes cambiar tu propio rol'}), 400
+
+        data = request.get_json()
+        new_role_str = data.get('role', '').upper()
+
+        try:
+            new_role = UserRole(new_role_str)
+        except ValueError:
+            return jsonify({
+                'error': f'Rol inválido: {new_role_str}',
+                'valid_roles': [r.value for r in UserRole]
+            }), 400
+
+        old_role = target_user.role.value
+        target_user.role = new_role
+        # Sincronizar campo legacy is_admin
+        target_user.is_admin = (new_role == UserRole.ADMIN)
+
+        db.session.commit()
+
+        # Auditoría
+        log_entry = AuditLog(
+            user_id=admin_id,
+            action='ROLE_CHANGED',
+            resource_type='USER',
+            resource_id=target_user_id,
+            details=json.dumps({
+                'old_role': old_role,
+                'new_role': new_role.value,
+                'target_email': target_user.email
+            }),
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent'),
+            success=True
+        )
+        db.session.add(log_entry)
+        db.session.commit()
+
+        return jsonify({
+            'message': f'Rol de {target_user.email} cambiado de {old_role} a {new_role.value}',
+            'user': target_user.to_dict()
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Error cambiando rol: {str(e)}'}), 500

@@ -23,26 +23,30 @@ import { Component, OnInit, OnDestroy, Output, EventEmitter } from '@angular/cor
         </div>
 
         <!-- Title -->
-        <h1 class="title">SISTEMA DE PROTECCIÓN</h1>
+        <h1 class="title">SENTRYVAULT</h1>
         <p class="subtitle">Inicializando módulos de seguridad</p>
 
         <!-- Crypto Badges -->
         <div class="crypto-badges">
-          <div class="badge" [class.active]="progress >= 25">
+          <div class="badge" [class.active]="progress >= 20">
             <span class="badge-icon">🔐</span>
             <span class="badge-text">RSA-4096</span>
           </div>
-          <div class="badge" [class.active]="progress >= 50">
+          <div class="badge" [class.active]="progress >= 40">
             <span class="badge-icon">🛡️</span>
             <span class="badge-text">AES-256</span>
           </div>
-          <div class="badge" [class.active]="progress >= 75">
+          <div class="badge" [class.active]="progress >= 55">
             <span class="badge-icon">✓</span>
             <span class="badge-text">SHA-512</span>
           </div>
+          <div class="badge" [class.active]="progress >= 70">
+            <span class="badge-icon">🔑</span>
+            <span class="badge-text">SECRETS ENGINE</span>
+          </div>
           <div class="badge" [class.active]="progress >= 90">
             <span class="badge-icon">⚡</span>
-            <span class="badge-text">ZERO TRUST</span>
+            <span class="badge-text">E2E</span>
           </div>
         </div>
 
@@ -282,7 +286,7 @@ export class SplashPhase1Component implements OnInit, OnDestroy {
         'Inicializando sistema seguro...',
         'Cargando módulos criptográficos...',
         'Verificando integridad del sistema...',
-        'Preparando interfaz Zero Trust...',
+        'Preparando interfaz segura...',
         'Sistema inicializado'
     ];
 

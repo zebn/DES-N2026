@@ -39,6 +39,10 @@ export class AuthInterceptor implements HttpInterceptor {
           this.storageService.removeItem('refresh_token');
           this.storageService.removeItem('current_user');
           this.router.navigate(['/auth/login']);
+        } else if (error.status === 403) {
+          // Forbidden - insufficient role/permissions
+          console.warn('Acceso denegado: permisos insuficientes');
+          this.router.navigate(['/secrets']);
         }
         return throwError(() => error);
       })

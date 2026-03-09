@@ -50,13 +50,17 @@ class Config:
         'mp3', 'wav', 'flac'
     }
     
-    # Niveles de clasificación
+    # Niveles de clasificación (legacy, se mantiene para compatibilidad)
     CLASSIFICATION_LEVELS = {
         'RESTRICTED': 1,
         'CONFIDENTIAL': 2, 
         'SECRET': 3,
         'TOP_SECRET': 4
     }
+    
+    # Roles RBAC válidos
+    RBAC_ROLES = ['ADMIN', 'MANAGER', 'USER', 'AUDITOR']
+    DEFAULT_ROLE = 'USER'
     
     # Configuración 2FA
     TOTP_ISSUER = os.environ.get('TOTP_ISSUER', 'Proteccion_Informacion').replace('_', ' ')
@@ -68,7 +72,7 @@ class Config:
     ACCOUNT_LOCKOUT_TIME = timedelta(minutes=int(os.environ.get('ACCOUNT_LOCKOUT_MINUTES', '30')))
     
     # CORS
-    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:4200,https://milcom.vercel.app').split(',')
+    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:4200,https://sentryvault.vercel.app').split(',')
 
 class DevelopmentConfig(Config):
     """Configuración para desarrollo"""

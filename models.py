@@ -2,9 +2,38 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from datetime import datetime
 import json
+import uuid
+import enum
 
 db = SQLAlchemy()
 bcrypt = Bcrypt()
+
+
+# ─── Enums ────────────────────────────────────────────────────────────────────
+
+class UserRole(enum.Enum):
+    """Roles del sistema RBAC"""
+    ADMIN = 'ADMIN'
+    MANAGER = 'MANAGER'
+    USER = 'USER'
+    AUDITOR = 'AUDITOR'
+
+
+class SecretType(enum.Enum):
+    """Tipos de secreto soportados"""
+    PASSWORD = 'PASSWORD'
+    API_KEY = 'API_KEY'
+    CERTIFICATE = 'CERTIFICATE'
+    SSH_KEY = 'SSH_KEY'
+    NOTE = 'NOTE'
+    DATABASE = 'DATABASE'
+    ENV_VARIABLE = 'ENV_VARIABLE'
+    IDENTITY = 'IDENTITY'
+
+
+def generate_uuid():
+    """Generar UUID como string para primary keys"""
+    return str(uuid.uuid4())
 
 class User(db.Model):
     """Modelo de usuario con criptografía asimétrica"""
@@ -22,9 +51,12 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     salt = db.Column(db.String(64), nullable=False)
     
-    # Autorización y roles
-    is_admin = db.Column(db.Boolean, default=False)
+    # Autorización y roles (RBAC)
+    role = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.USER)
     is_active = db.Column(db.Boolean, default=True)
+
+    # Campos legacy — se mantienen para compatibilidad durante migración
+    is_admin = db.Column(db.Boolean, default=False)
     clearance_level = db.Column(db.String(20), default='CONFIDENTIAL')
     
     # Criptografía asimétrica (generada en cliente)
@@ -74,8 +106,20 @@ class User(db.Model):
         """Obtener parámetros de derivación de clave como dict"""
         return json.loads(self.key_derivation_params)
     
+    @property
+    def is_admin_role(self):
+        """Comprobar si el usuario tiene rol ADMIN (sustituye is_admin)"""
+        return self.role == UserRole.ADMIN
+
+    def has_role(self, *roles: str) -> bool:
+        """Verificar si el usuario tiene uno de los roles indicados.
+
+        Acepta nombres de rol como strings (e.g. 'ADMIN', 'MANAGER').
+        """
+        return self.role.value in roles
+
     def has_clearance(self, required_level):
-        """Verificar si el usuario tiene el nivel de autorización requerido"""
+        """Verificar si el usuario tiene el nivel de autorización requerido (legacy)"""
         levels = {'RESTRICTED': 1, 'CONFIDENTIAL': 2, 'SECRET': 3, 'TOP_SECRET': 4}
         user_level = levels.get(self.clearance_level, 0)
         required = levels.get(required_level, 4)
@@ -89,8 +133,9 @@ class User(db.Model):
             'apellidos': self.apellidos,
             'email': self.email,
             'telefono': self.telefono,
+            'role': self.role.value if self.role else 'USER',
             'clearance_level': self.clearance_level,
-            'is_admin': self.is_admin,
+            'is_admin': self.role == UserRole.ADMIN if self.role else self.is_admin,
             'is_active': self.is_active,
             'is_2fa_enabled': self.is_2fa_enabled,
             'public_key': self.public_key,
@@ -269,3 +314,173 @@ class AuditLog(db.Model):
     
     # Relación
     user = db.relationship('User', backref='audit_logs')
+
+
+# ─── Nuevos modelos: Gestión de Secretos ─────────────────────────────────────
+
+class Folder(db.Model):
+    """Carpetas para organizar secretos"""
+    __tablename__ = 'folders'
+
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    parent_id = db.Column(db.String(36), db.ForeignKey('folders.id'), nullable=True)
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relaciones
+    owner = db.relationship('User', backref=db.backref('folders', lazy='dynamic'))
+    parent = db.relationship('Folder', remote_side=[id], backref='children')
+    secrets = db.relationship('Secret', backref='folder', lazy='dynamic')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'parent_id': self.parent_id,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+        }
+
+
+class Secret(db.Model):
+    """Modelo principal para secretos cifrados E2E"""
+    __tablename__ = 'secrets'
+
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    # Metadatos (en claro — no sensibles)
+    title = db.Column(db.String(500), nullable=False)  # Cifrado en cliente
+    secret_type = db.Column(db.Enum(SecretType), nullable=False)
+
+    # Datos cifrados E2E (el servidor NUNCA ve el contenido)
+    encrypted_data = db.Column(db.Text, nullable=False)          # JSON cifrado con AES-256-CTR, base64
+    encrypted_aes_key = db.Column(db.Text, nullable=False)       # Clave AES cifrada con RSA-4096 del owner
+    content_hash = db.Column(db.String(64), nullable=False)      # SHA-256 del plaintext
+    digital_signature = db.Column(db.Text, nullable=False)       # RSA-PSS sobre content_hash
+
+    # Organización
+    tags = db.Column(db.Text, nullable=True)                     # JSON de etiquetas (cifrado en cliente)
+    folder_id = db.Column(db.String(36), db.ForeignKey('folders.id'), nullable=True)
+
+    # Versionado
+    version = db.Column(db.Integer, default=1, nullable=False)
+
+    # Caducidad y rotación
+    expires_at = db.Column(db.DateTime, nullable=True)
+    rotation_period_days = db.Column(db.Integer, nullable=True)
+    last_rotated_at = db.Column(db.DateTime, nullable=True)
+
+    # Soft delete
+    is_deleted = db.Column(db.Boolean, default=False)
+    deleted_at = db.Column(db.DateTime, nullable=True)
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relaciones
+    owner = db.relationship('User', backref=db.backref('secrets', lazy='dynamic'))
+    versions = db.relationship('SecretVersion', backref='secret', lazy='dynamic',
+                               order_by='SecretVersion.version_number.desc()')
+    access_logs = db.relationship('SecretAccessLog', backref='secret', lazy='dynamic')
+
+    def to_dict(self, include_encrypted=False):
+        """Convertir a dict. Por defecto NO incluye datos cifrados (listados)."""
+        data = {
+            'id': self.id,
+            'owner_id': self.owner_id,
+            'title': self.title,
+            'secret_type': self.secret_type.value,
+            'tags': self.tags,
+            'folder_id': self.folder_id,
+            'version': self.version,
+            'content_hash': self.content_hash,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'rotation_period_days': self.rotation_period_days,
+            'last_rotated_at': self.last_rotated_at.isoformat() if self.last_rotated_at else None,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+        }
+        if include_encrypted:
+            data['encrypted_data'] = self.encrypted_data
+            data['encrypted_aes_key'] = self.encrypted_aes_key
+            data['digital_signature'] = self.digital_signature
+        return data
+
+
+class SecretVersion(db.Model):
+    """Historial de versiones de un secreto"""
+    __tablename__ = 'secret_versions'
+
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    secret_id = db.Column(db.String(36), db.ForeignKey('secrets.id'), nullable=False)
+    version_number = db.Column(db.Integer, nullable=False)
+
+    # Snapshot cifrado de esta versión
+    encrypted_data = db.Column(db.Text, nullable=False)
+    encrypted_aes_key = db.Column(db.Text, nullable=False)
+    content_hash = db.Column(db.String(64), nullable=False)
+    digital_signature = db.Column(db.Text, nullable=False)
+
+    # Quién y por qué
+    changed_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    change_reason = db.Column(db.String(500), nullable=True)
+
+    # Timestamp
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relaciones
+    changed_by = db.relationship('User', backref='secret_changes')
+
+    def to_dict(self, include_encrypted=False):
+        data = {
+            'id': self.id,
+            'secret_id': self.secret_id,
+            'version_number': self.version_number,
+            'content_hash': self.content_hash,
+            'changed_by_id': self.changed_by_id,
+            'change_reason': self.change_reason,
+            'created_at': self.created_at.isoformat(),
+        }
+        if include_encrypted:
+            data['encrypted_data'] = self.encrypted_data
+            data['encrypted_aes_key'] = self.encrypted_aes_key
+            data['digital_signature'] = self.digital_signature
+        return data
+
+
+class SecretAccessLog(db.Model):
+    """Registro de accesos a secretos para auditoría"""
+    __tablename__ = 'secret_access_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    secret_id = db.Column(db.String(36), db.ForeignKey('secrets.id'), nullable=True)  # nullable for failed CREATE logs
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    # Detalles del acceso
+    access_type = db.Column(db.String(30), nullable=False)  # CREATE, READ, UPDATE, DELETE, DECRYPT, SHARE, ROTATE
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.String(500))
+    success = db.Column(db.Boolean, default=True)
+    error_message = db.Column(db.String(500))
+
+    # Timestamp
+    accessed_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relaciones
+    user = db.relationship('User', backref='secret_access_logs')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'secret_id': self.secret_id,
+            'user_id': self.user_id,
+            'access_type': self.access_type,
+            'success': self.success,
+            'accessed_at': self.accessed_at.isoformat(),
+        }

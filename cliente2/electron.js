@@ -30,7 +30,7 @@ function createWindow() {
             sandbox: true
         },
         autoHideMenuBar: false,
-        title: 'MILCOM Secure Exchange - Inteligencia Militar Zero Trust'
+        title: 'SentryVault - Protrego tu información más secreta"
     });
 
     // Cargar aplicación Angular
@@ -117,7 +117,7 @@ function createWindow() {
                         const { dialog } = require('electron');
                         dialog.showMessageBox(mainWindow, {
                             type: 'info',
-                            title: 'MILCOM Secure Exchange',
+                            title: 'SentryVault',
                             message: 'Sistema de Protección de Información Clasificada',
                             detail: 'Versión 1.0.0\n\n' +
                                 'Cifrado End-to-End:\n' +
