@@ -212,6 +212,7 @@ def create_secret():
             encrypted_data=data['encrypted_data'],
             encrypted_aes_key=data['encrypted_aes_key'],
             content_hash=data['content_hash'],
+            digital_signature=data['digital_signature'],
             changed_by_id=user_id,
             change_reason='Creación inicial',
         )
@@ -446,6 +447,7 @@ def update_secret(secret_id):
             encrypted_data=data['encrypted_data'],
             encrypted_aes_key=data['encrypted_aes_key'],
             content_hash=data['content_hash'],
+            digital_signature=data['digital_signature'],
             changed_by_id=user_id,
             change_reason=data.get('change_reason'),
         )
@@ -631,6 +633,7 @@ def rotate_secret(secret_id):
             encrypted_data=data['encrypted_data'],
             encrypted_aes_key=data['encrypted_aes_key'],
             content_hash=data['content_hash'],
+            digital_signature=data['digital_signature'],
             changed_by_id=user_id,
             change_reason=data.get('change_reason', 'Rotación de secreto'),
         )
