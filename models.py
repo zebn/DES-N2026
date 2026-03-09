@@ -300,7 +300,7 @@ class AuditLog(db.Model):
     # Detalles de la acción
     action = db.Column(db.String(50), nullable=False)
     resource_type = db.Column(db.String(50))
-    resource_id = db.Column(db.Integer)
+    resource_id = db.Column(db.String(36))  # String para soportar UUIDs de secretos
     details = db.Column(db.Text)  # JSON con detalles adicionales
     
     # Contexto
@@ -314,6 +314,21 @@ class AuditLog(db.Model):
     
     # Relación
     user = db.relationship('User', backref='audit_logs')
+
+    def to_dict(self):
+        import json as _json
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'action': self.action,
+            'resource_type': self.resource_type,
+            'resource_id': self.resource_id,
+            'details': _json.loads(self.details) if self.details else None,
+            'ip_address': self.ip_address,
+            'success': self.success,
+            'error_message': self.error_message,
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
+        }
 
 
 # ─── Nuevos modelos: Gestión de Secretos ─────────────────────────────────────

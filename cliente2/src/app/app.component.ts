@@ -73,6 +73,19 @@ import { AuthService, User } from './core/services/auth.service';
               </a>
               <mat-divider></mat-divider>
             </ng-container>
+
+            <!-- Audit section (ADMIN + AUDITOR) -->
+            <ng-container *ngIf="authService.hasRole('ADMIN', 'AUDITOR')">
+              <a mat-list-item routerLink="/audit/logs" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>policy</mat-icon>
+                <span matListItemTitle>Auditoría</span>
+              </a>
+              <a mat-list-item routerLink="/audit/stats" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>analytics</mat-icon>
+                <span matListItemTitle>Estadísticas</span>
+              </a>
+              <mat-divider></mat-divider>
+            </ng-container>
             
             <a mat-list-item routerLink="/profile" routerLinkActive="active-link">
               <mat-icon matListItemIcon>person</mat-icon>
