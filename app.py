@@ -336,8 +336,9 @@ def create_app(config_name=None):
 
 def init_admin_user(app):
     """Crear usuario administrador inicial si no existe"""
+    import json
     with app.app_context():
-        from models import User
+        from models import User, UserRole
         from utils.crypto import crypto_manager
         
         admin_email = "admin@admin.com"
@@ -361,6 +362,7 @@ def init_admin_user(app):
                 email=admin_email,
                 clearance_level="TOP_SECRET",
                 is_admin=True,
+                role=UserRole.ADMIN,
                 public_key=public_key,
                 private_key_encrypted=encrypted_private,
                 key_derivation_params=json.dumps(derivation_params),
