@@ -374,13 +374,34 @@ def get_audit_stats():
         .all()
     )
 
-    # Usuarios más activos
+    # Usuarios más activos (con email)
     top_users = (
         db.session.query(AuditLog.user_id, db.func.count(AuditLog.id).label('count'))
         .filter(AuditLog.timestamp >= since, AuditLog.user_id.isnot(None))
         .group_by(AuditLog.user_id)
         .order_by(db.text('count DESC'))
         .limit(10)
+        .all()
+    )
+
+    top_users_with_email = []
+    for uid, cnt in top_users:
+        user = User.query.get(uid)
+        top_users_with_email.append({
+            'user_id': uid,
+            'email': user.email if user else f'user_{uid}',
+            'count': cnt,
+        })
+
+    # Eventos por día
+    events_by_day_raw = (
+        db.session.query(
+            db.func.date(AuditLog.timestamp).label('day'),
+            db.func.count(AuditLog.id).label('count')
+        )
+        .filter(AuditLog.timestamp >= since)
+        .group_by(db.func.date(AuditLog.timestamp))
+        .order_by(db.text('day ASC'))
         .all()
     )
 
@@ -395,9 +416,10 @@ def get_audit_stats():
         'total_events': total_events,
         'failed_events': failed_events,
         'success_rate': round((total_events - failed_events) / max(total_events, 1) * 100, 1),
-        'by_action': {action: count for action, count in action_counts},
+        'actions_count': {action: count for action, count in action_counts},
         'by_resource_type': {rt: count for rt, count in resource_counts},
-        'top_active_users': [{'user_id': uid, 'event_count': cnt} for uid, cnt in top_users],
+        'top_users': top_users_with_email,
+        'events_by_day': [{'date': str(day), 'count': cnt} for day, cnt in events_by_day_raw],
         'secret_access_count': secret_access_count,
     }), 200
 
