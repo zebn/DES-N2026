@@ -41,7 +41,7 @@ import { AuthService, User } from './core/services/auth.service';
       <mat-sidenav-container class="sidenav-container">
         <mat-sidenav #sidenav mode="side" [opened]="isAuthenticated" class="app-sidenav">
           <mat-nav-list>
-            <a mat-list-item routerLink="/files" routerLinkActive="active-link">
+   <!--         <a mat-list-item routerLink="/files" routerLinkActive="active-link">
               <mat-icon matListItemIcon>folder</mat-icon>
               <span matListItemTitle>Mis Archivos</span>
             </a>
@@ -56,7 +56,9 @@ import { AuthService, User } from './core/services/auth.service';
               <span matListItemTitle>Compartidos</span>
             </a>
             
+            
             <mat-divider></mat-divider>
+            -->
 
             <a mat-list-item routerLink="/secrets" routerLinkActive="active-link">
               <mat-icon matListItemIcon>lock</mat-icon>
