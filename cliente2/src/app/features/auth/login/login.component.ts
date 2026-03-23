@@ -70,7 +70,7 @@ export class LoginComponent {
         const userName = response.user?.nombre || email;
         this.notificationService.loginSuccess(userName);
         setTimeout(() => {
-          this.router.navigate(['/files']);
+          this.router.navigate(['/secrets']);
         }, 2000);
       },
       error: (error) => {

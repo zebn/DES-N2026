@@ -63,11 +63,8 @@ def _audit(user_id, action, resource_type, resource_id=None, details=None, succe
         user_id=user_id,
         action=action,
         resource_type=resource_type,
-        resource_id=None,  # resource_id es Integer en AuditLog, secrets usan UUID string
-        details=json.dumps({
-            'secret_id': resource_id,
-            **(details or {}),
-        }),
+        resource_id=str(resource_id) if resource_id else None,
+        details=json.dumps(details) if details else None,
         ip_address=request.remote_addr,
         user_agent=request.headers.get('User-Agent'),
         success=success,
@@ -115,6 +112,9 @@ def create_secret():
           properties:
             title:
               type: string
+            url:
+              type: string
+              description: URL сайта/сервиса (опционально)
             secret_type:
               type: string
               enum: [PASSWORD, API_KEY, CERTIFICATE, SSH_KEY, NOTE, DATABASE, ENV_VARIABLE, IDENTITY]
@@ -188,10 +188,11 @@ def create_secret():
             except ValueError:
                 return jsonify({'error': 'Formato de fecha inválido para expires_at'}), 400
 
-        # Crear secreto
+        # Crear secretо
         secret = Secret(
             owner_id=user_id,
             title=data['title'],
+            url=data.get('url'),
             secret_type=SecretType(data['secret_type']),
             encrypted_data=data['encrypted_data'],
             encrypted_aes_key=data['encrypted_aes_key'],
@@ -385,6 +386,9 @@ def update_secret(secret_id):
           properties:
             title:
               type: string
+            url:
+              type: string
+              description: URL сайта/сервиса (опционально)
             encrypted_data:
               type: string
             encrypted_aes_key:
@@ -453,7 +457,7 @@ def update_secret(secret_id):
         )
         db.session.add(version)
 
-        # Actualizar el secreto
+        # Actualizar секрет
         secret.encrypted_data = data['encrypted_data']
         secret.encrypted_aes_key = data['encrypted_aes_key']
         secret.content_hash = data['content_hash']
@@ -462,6 +466,8 @@ def update_secret(secret_id):
 
         if data.get('title'):
             secret.title = data['title']
+        if 'url' in data:
+            secret.url = data['url']
         if 'tags' in data:
             secret.tags = data['tags']
         if 'folder_id' in data:

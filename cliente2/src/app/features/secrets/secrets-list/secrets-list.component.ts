@@ -110,6 +110,12 @@ import { SecretDetailDialogComponent } from '../secret-detail-dialog/secret-deta
               </div>
 
               <div class="secret-card-meta">
+                <div class="meta-item" *ngIf="secret.url">
+                  <mat-icon>link</mat-icon>
+                  <a [href]="secret.url" target="_blank" rel="noopener noreferrer" (click)="$event.stopPropagation()" class="url-link">
+                    {{ trimUrl(secret.url) }}
+                  </a>
+                </div>
                 <div class="meta-item" *ngIf="secret.folder_id">
                   <mat-icon>folder</mat-icon>
                   <span>{{ getFolderName(secret.folder_id) }}</span>
@@ -311,6 +317,24 @@ import { SecretDetailDialogComponent } from '../secret-detail-dialog/secret-deta
       gap: 4px;
     }
 
+    .meta-item a {
+      color: #1976d2;
+      text-decoration: none;
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 150px;
+    }
+
+    .meta-item a:hover {
+      text-decoration: underline;
+    }
+
+    .url-link {
+      display: inline-block;
+    }
+
     .meta-item mat-icon {
       font-size: 16px;
       width: 16px;
@@ -485,5 +509,16 @@ export class SecretsListComponent implements OnInit {
     return d.toLocaleDateString('es-ES', {
       day: '2-digit', month: 'short', year: 'numeric'
     });
+  }
+
+  trimUrl(url: string): string {
+    if (!url) return '';
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname + (urlObj.pathname !== '/' ? urlObj.pathname : '');
+    } catch {
+      // If not a valid URL, just trim to 30 chars
+      return url.length > 30 ? url.substring(0, 30) + '...' : url;
+    }
   }
 }

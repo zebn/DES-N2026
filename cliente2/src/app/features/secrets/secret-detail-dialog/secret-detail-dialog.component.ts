@@ -22,6 +22,15 @@ import { CryptoService } from '../../../core/services/crypto.service';
       <div class="detail-section">
         <h3>Información</h3>
         <div class="meta-grid">
+          <div class="meta-field" *ngIf="secret.url">
+            <span class="label">URL</span>
+            <span class="value">
+              <a [href]="secret.url" target="_blank" rel="noopener noreferrer">
+                {{ secret.url }}
+                <mat-icon class="external-link">open_in_new</mat-icon>
+              </a>
+            </span>
+          </div>
           <div class="meta-field">
             <span class="label">Tipo</span>
             <span class="value">{{ getTypeLabel(secret.secret_type) }}</span>
@@ -181,6 +190,24 @@ import { CryptoService } from '../../../core/services/crypto.service';
       display: flex;
       align-items: center;
       gap: 4px;
+    }
+
+    .meta-field .value a {
+      color: #1976d2;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .meta-field .value a:hover {
+      text-decoration: underline;
+    }
+
+    .external-link {
+      font-size: 12px;
+      width: 12px;
+      height: 12px;
     }
 
     .meta-field .value.expired {

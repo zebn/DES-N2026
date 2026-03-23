@@ -27,6 +27,11 @@ import { CryptoService } from '../../../core/services/crypto.service';
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
+          <mat-label>URL (opcional)</mat-label>
+          <input matInput formControlName="url" placeholder="Ej: https://ejemplo.com">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
           <mat-label>Tipo de secreto</mat-label>
           <mat-select formControlName="secret_type">
             <mat-option *ngFor="let type of secretTypes" [value]="type.value">
@@ -163,6 +168,7 @@ export class SecretCreateDialogComponent {
   ) {
     this.form = this.fb.group({
       title: ['', Validators.required],
+      url: [''],
       secret_type: ['PASSWORD', Validators.required],
       plaintext: ['', Validators.required],
       folder_id: [''],
@@ -177,7 +183,7 @@ export class SecretCreateDialogComponent {
     this.isSaving = true;
 
     try {
-      const { title, secret_type, plaintext, folder_id, tags, expires_at, rotation_period_days } = this.form.value;
+      const { title, url, secret_type, plaintext, folder_id, tags, expires_at, rotation_period_days } = this.form.value;
 
       // Build the secret JSON to encrypt
       const secretPayload = JSON.stringify({
@@ -210,6 +216,7 @@ export class SecretCreateDialogComponent {
         digital_signature: encrypted.digital_signature,
       };
 
+      if (url) payload.url = url;
       if (folder_id) payload.folder_id = folder_id;
       if (tagsJson) payload.tags = tagsJson;
       if (expires_at) payload.expires_at = new Date(expires_at).toISOString();
