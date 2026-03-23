@@ -7,6 +7,7 @@ export interface Secret {
   id: string;
   owner_id: number;
   title: string;
+  url?: string;
   secret_type: string;
   tags: string | null;
   folder_id: string | null;

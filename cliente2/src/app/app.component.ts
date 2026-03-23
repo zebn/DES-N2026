@@ -41,7 +41,7 @@ import { AuthService, User } from './core/services/auth.service';
       <mat-sidenav-container class="sidenav-container">
         <mat-sidenav #sidenav mode="side" [opened]="isAuthenticated" class="app-sidenav">
           <mat-nav-list>
-            <a mat-list-item routerLink="/files" routerLinkActive="active-link">
+   <!--         <a mat-list-item routerLink="/files" routerLinkActive="active-link">
               <mat-icon matListItemIcon>folder</mat-icon>
               <span matListItemTitle>Mis Archivos</span>
             </a>
@@ -56,7 +56,9 @@ import { AuthService, User } from './core/services/auth.service';
               <span matListItemTitle>Compartidos</span>
             </a>
             
+            
             <mat-divider></mat-divider>
+            -->
 
             <a mat-list-item routerLink="/secrets" routerLinkActive="active-link">
               <mat-icon matListItemIcon>lock</mat-icon>
@@ -70,6 +72,19 @@ import { AuthService, User } from './core/services/auth.service';
               <a mat-list-item routerLink="/admin" routerLinkActive="active-link">
                 <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
                 <span matListItemTitle>Panel Admin</span>
+              </a>
+              <mat-divider></mat-divider>
+            </ng-container>
+
+            <!-- Audit section (ADMIN + AUDITOR) -->
+            <ng-container *ngIf="authService.hasRole('ADMIN', 'AUDITOR')">
+              <a mat-list-item routerLink="/audit/logs" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>policy</mat-icon>
+                <span matListItemTitle>Auditoría</span>
+              </a>
+              <a mat-list-item routerLink="/audit/stats" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>analytics</mat-icon>
+                <span matListItemTitle>Estadísticas</span>
               </a>
               <mat-divider></mat-divider>
             </ng-container>

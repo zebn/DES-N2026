@@ -80,8 +80,98 @@ class User(db.Model):
             'role': self.role.value,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat(),
+            'expires_at': self.expires_at.isoformat(),
+            'executed_at': self.executed_at.isoformat() if self.executed_at else None
         }
 
+class FileShare(db.Model):
+    """Modelo para compartir archivos entre usuarios"""
+    __tablename__ = 'file_shares'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    file_id = db.Column(db.Integer, db.ForeignKey('secure_files.id'), nullable=False)
+    shared_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    shared_with_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Clave AES re-cifrada para el destinatario
+    encrypted_aes_key_for_recipient = db.Column(db.Text, nullable=False)
+    
+    # Permisos
+    can_read = db.Column(db.Boolean, default=True)
+    can_download = db.Column(db.Boolean, default=False)
+    can_share = db.Column(db.Boolean, default=False)
+    
+    # Timestamps
+    shared_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime)
+    
+    # Relaciones
+    shared_by = db.relationship('User', foreign_keys=[shared_by_id], backref='files_shared')
+    shared_with = db.relationship('User', foreign_keys=[shared_with_id], backref='files_received')
+
+class FileAccessLog(db.Model):
+    """Registro de accesos a archivos para auditoría"""
+    __tablename__ = 'file_access_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    file_id = db.Column(db.Integer, db.ForeignKey('secure_files.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Detalles del acceso
+    access_type = db.Column(db.String(20), nullable=False)  # VIEW, DOWNLOAD, SHARE, DELETE
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.String(500))
+    success = db.Column(db.Boolean, default=True)
+    error_message = db.Column(db.String(500))
+    
+    # Timestamp
+    accessed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relaciones
+    user = db.relationship('User', backref='access_logs')
+
+class AuditLog(db.Model):
+    """Registro de auditoría general del sistema"""
+    __tablename__ = 'audit_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    
+    # Detalles de la acción
+    action = db.Column(db.String(50), nullable=False)
+    resource_type = db.Column(db.String(50))
+    resource_id = db.Column(db.String(36))  # String para soportar UUIDs de secretos
+    details = db.Column(db.Text)  # JSON con detalles adicionales
+    
+    # Contexto
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.String(500))
+    success = db.Column(db.Boolean, default=True)
+    error_message = db.Column(db.String(500))
+    
+    # Timestamp
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relación
+    user = db.relationship('User', backref='audit_logs')
+
+    def to_dict(self):
+        import json as _json
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'action': self.action,
+            'resource_type': self.resource_type,
+            'resource_id': self.resource_id,
+            'details': _json.loads(self.details) if self.details else None,
+            'ip_address': self.ip_address,
+            'success': self.success,
+            'error_message': self.error_message,
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
+        }
+
+
+# ─── Nuevos modelos: Gestión de Secretos ─────────────────────────────────────
 
 class Folder(db.Model):
     """Carpetas para organizar secretos jerárquicamente"""
@@ -118,7 +208,7 @@ class Secret(db.Model):
 
     # Metadatos (en claro — no sensibles)
     title = db.Column(db.String(500), nullable=False)  # Cifrado en cliente
-    url = db.Column(db.String(500), nullable=True)     # URL сайта/сервиса (опционально, en claro)
+    url = db.Column(db.String(500), nullable=True)     # URL сайта/сервиса (опционально, в claro)
     secret_type = db.Column(db.Enum(SecretType), nullable=False)
 
     # Datos cifrados E2E (el servidor NUNCA ve el contenido)
