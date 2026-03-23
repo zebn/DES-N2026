@@ -147,7 +147,7 @@ import { AuthService, User } from './core/services/auth.service';
     }
 
     .app-sidenav {
-      width: 250px;
+      width: 300px;
       padding: 16px 0;
     }
 
