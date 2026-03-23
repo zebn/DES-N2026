@@ -112,6 +112,9 @@ def create_secret():
           properties:
             title:
               type: string
+            url:
+              type: string
+              description: URL сайта/сервиса (опционально)
             secret_type:
               type: string
               enum: [PASSWORD, API_KEY, CERTIFICATE, SSH_KEY, NOTE, DATABASE, ENV_VARIABLE, IDENTITY]
@@ -185,10 +188,11 @@ def create_secret():
             except ValueError:
                 return jsonify({'error': 'Formato de fecha inválido para expires_at'}), 400
 
-        # Crear secreto
+        # Crear secretо
         secret = Secret(
             owner_id=user_id,
             title=data['title'],
+            url=data.get('url'),
             secret_type=SecretType(data['secret_type']),
             encrypted_data=data['encrypted_data'],
             encrypted_aes_key=data['encrypted_aes_key'],
@@ -382,6 +386,9 @@ def update_secret(secret_id):
           properties:
             title:
               type: string
+            url:
+              type: string
+              description: URL сайта/сервиса (опционально)
             encrypted_data:
               type: string
             encrypted_aes_key:
@@ -450,7 +457,7 @@ def update_secret(secret_id):
         )
         db.session.add(version)
 
-        # Actualizar el secreto
+        # Actualizar секрет
         secret.encrypted_data = data['encrypted_data']
         secret.encrypted_aes_key = data['encrypted_aes_key']
         secret.content_hash = data['content_hash']
@@ -459,6 +466,8 @@ def update_secret(secret_id):
 
         if data.get('title'):
             secret.title = data['title']
+        if 'url' in data:
+            secret.url = data['url']
         if 'tags' in data:
             secret.tags = data['tags']
         if 'folder_id' in data:

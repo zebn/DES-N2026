@@ -370,6 +370,7 @@ class Secret(db.Model):
 
     # Metadatos (en claro — no sensibles)
     title = db.Column(db.String(500), nullable=False)  # Cifrado en cliente
+    url = db.Column(db.String(500), nullable=True)     # URL сайта/сервиса (опционально, в claro)
     secret_type = db.Column(db.Enum(SecretType), nullable=False)
 
     # Datos cifrados E2E (el servidor NUNCA ve el contenido)
@@ -410,6 +411,7 @@ class Secret(db.Model):
             'id': self.id,
             'owner_id': self.owner_id,
             'title': self.title,
+            'url': self.url,
             'secret_type': self.secret_type.value,
             'tags': self.tags,
             'folder_id': self.folder_id,
