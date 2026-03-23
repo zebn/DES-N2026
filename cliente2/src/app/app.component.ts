@@ -64,7 +64,12 @@ import { AuthService, User } from './core/services/auth.service';
               <mat-icon matListItemIcon>lock</mat-icon>
               <span matListItemTitle>Bóveda de Secretos</span>
             </a>
-            
+
+            <a mat-list-item routerLink="/folders" routerLinkActive="active-link">
+              <mat-icon matListItemIcon>folder</mat-icon>
+              <span matListItemTitle>Gestión de Carpetas</span>
+            </a>
+
             <mat-divider></mat-divider>
 
             <!-- Admin-only section -->

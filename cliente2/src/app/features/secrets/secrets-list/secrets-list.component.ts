@@ -496,7 +496,21 @@ export class SecretsListComponent implements OnInit {
 
   getFolderName(folderId: string): string {
     const folder = this.folders.find(f => f.id === folderId);
-    return folder ? folder.name : 'Sin carpeta';
+    if (!folder) return 'Sin carpeta';
+    return this.getFolderPath(folder);
+  }
+
+  getFolderPath(folder: Folder): string {
+    const path: string[] = [];
+    let current: Folder | undefined = folder;
+
+    // Build path from current folder to root
+    while (current) {
+      path.unshift(current.name);
+      current = this.folders.find(f => f.id === current?.parent_id);
+    }
+
+    return path.join(' / ');
   }
 
   isExpired(secret: Secret): boolean {
