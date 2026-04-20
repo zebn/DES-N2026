@@ -7,7 +7,7 @@ import functools
 from flask import jsonify, request
 from flask_jwt_extended import get_jwt_identity
 
-from models import db, User, AuditLog
+from models import db, User, AuditLog, Group, GroupMembership, GroupRole
 
 
 def get_current_user_id() -> int:
@@ -41,6 +41,46 @@ def require_role(*allowed_roles: str):
                     'error': 'No tiene permisos para esta acción',
                     'required_roles': list(allowed_roles),
                     'current_role': user.role.value,
+                }), 403
+
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def require_group_role(*allowed_roles: str, param: str = 'group_id'):
+    """Restringe el acceso a miembros con uno de los roles indicados dentro del grupo.
+
+    Roles dentro del grupo: OWNER, ADMIN, MEMBER, READONLY. Complementa a
+    ``@require_role`` (que mira el rol RBAC global). Usa ``param`` para
+    indicar el nombre del argumento de URL que contiene el id del grupo.
+
+    Devuelve 404 si el grupo no existe o si el usuario no es miembro (no
+    filtra existencia), y 403 si es miembro pero sin el rol requerido.
+    """
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            user_id = get_current_user_id()
+            group_id = kwargs.get(param)
+            if not group_id:
+                return jsonify({'error': 'group_id no especificado en la ruta'}), 400
+
+            group = Group.query.get(group_id)
+            if group is None:
+                return jsonify({'error': 'Grupo no encontrado'}), 404
+
+            membership = GroupMembership.query.filter_by(
+                group_id=group_id, user_id=user_id
+            ).first()
+            if membership is None:
+                return jsonify({'error': 'Grupo no encontrado'}), 404
+
+            if membership.role_in_group.value not in allowed_roles:
+                return jsonify({
+                    'error': 'No tiene permisos suficientes en este grupo',
+                    'required_group_roles': list(allowed_roles),
+                    'current_group_role': membership.role_in_group.value,
                 }), 403
 
             return fn(*args, **kwargs)
