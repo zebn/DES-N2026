@@ -17,7 +17,6 @@ from routes.auth import auth_bp
 from routes.files import files_bp
 from routes.secrets import secrets_bp, folders_bp
 from routes.audit import audit_bp
-from routes.groups import groups_bp
 
 def create_app(config_name=None):
     """Factory para crear la aplicación Flask"""
@@ -142,10 +141,6 @@ def create_app(config_name=None):
                 "description": "Auditoría, logs y estadísticas de actividad"
             },
             {
-                "name": "groups",
-                "description": "Gestión de grupos de usuarios y membresías"
-            },
-            {
                 "name": "system",
                 "description": "Información del sistema y health checks"
             }
@@ -160,7 +155,6 @@ def create_app(config_name=None):
     app.register_blueprint(secrets_bp)
     app.register_blueprint(folders_bp)
     app.register_blueprint(audit_bp)
-    app.register_blueprint(groups_bp)
     
     # Crear tablas de base de datos si no existen
     with app.app_context():
