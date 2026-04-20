@@ -56,7 +56,7 @@ import { CryptoService } from '../../../core/services/crypto.service';
           <mat-select formControlName="folder_id">
             <mat-option value="">Sin carpeta</mat-option>
             <mat-option *ngFor="let folder of data.folders" [value]="folder.id">
-              {{ folder.name }}
+              {{ getFolderPath(folder) }}
             </mat-option>
           </mat-select>
         </mat-form-field>
@@ -176,6 +176,19 @@ export class SecretCreateDialogComponent {
       expires_at: [''],
       rotation_period_days: [null],
     });
+  }
+
+  getFolderPath(folder: Folder): string {
+    const path: string[] = [];
+    let current: Folder | undefined = folder;
+
+    // Build path from current folder to root
+    while (current) {
+      path.unshift(current.name);
+      current = this.data.folders.find(f => f.id === current?.parent_id);
+    }
+
+    return path.join(' / ');
   }
 
   async save(): Promise<void> {
