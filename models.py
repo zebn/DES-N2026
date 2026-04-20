@@ -31,6 +31,14 @@ class SecretType(enum.Enum):
     IDENTITY = 'IDENTITY'
 
 
+class GroupRole(enum.Enum):
+    """Roles dentro de un grupo (distintos del RBAC global)"""
+    OWNER = 'OWNER'
+    ADMIN = 'ADMIN'
+    MEMBER = 'MEMBER'
+    READONLY = 'READONLY'
+
+
 def generate_uuid():
     """Generar UUID como string para primary keys"""
     return str(uuid.uuid4())
@@ -500,4 +508,83 @@ class SecretAccessLog(db.Model):
             'access_type': self.access_type,
             'success': self.success,
             'accessed_at': self.accessed_at.isoformat(),
+        }
+
+
+# ─── Gestión de grupos (RF03) ────────────────────────────────────────────────
+
+class Group(db.Model):
+    """Grupo de usuarios para compartir secretos (RF03)."""
+    __tablename__ = 'groups'
+
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    creator = db.relationship('User', foreign_keys=[created_by_id],
+                              backref=db.backref('groups_created', lazy='dynamic'))
+    memberships = db.relationship('GroupMembership', backref='group',
+                                  lazy='dynamic', cascade='all, delete-orphan')
+
+    def get_members(self):
+        """Lista de memberships activas del grupo."""
+        return self.memberships.all()
+
+    def is_member(self, user_id):
+        return self.memberships.filter_by(user_id=user_id).first() is not None
+
+    def get_member_role(self, user_id):
+        """Devuelve GroupRole del usuario en el grupo, o None si no es miembro."""
+        membership = self.memberships.filter_by(user_id=user_id).first()
+        return membership.role_in_group if membership else None
+
+    def to_dict(self, include_members=False):
+        data = {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'created_by_id': self.created_by_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'member_count': self.memberships.count(),
+        }
+        if include_members:
+            data['members'] = [m.to_dict() for m in self.get_members()]
+        return data
+
+
+class GroupMembership(db.Model):
+    """Membresía de un usuario en un grupo con rol dentro del grupo."""
+    __tablename__ = 'group_memberships'
+    __table_args__ = (
+        db.UniqueConstraint('group_id', 'user_id', name='uq_group_user'),
+        db.Index('ix_group_memberships_group_id', 'group_id'),
+        db.Index('ix_group_memberships_user_id', 'user_id'),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    group_id = db.Column(db.String(36), db.ForeignKey('groups.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    role_in_group = db.Column(db.Enum(GroupRole), nullable=False, default=GroupRole.MEMBER)
+    added_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', foreign_keys=[user_id],
+                           backref=db.backref('group_memberships', lazy='dynamic'))
+    added_by = db.relationship('User', foreign_keys=[added_by_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'group_id': self.group_id,
+            'user_id': self.user_id,
+            'role_in_group': self.role_in_group.value,
+            'added_by_id': self.added_by_id,
+            'joined_at': self.joined_at.isoformat() if self.joined_at else None,
+            'user_email': self.user.email if self.user else None,
+            'user_name': (self.user.nombre + ' ' + self.user.apellidos) if self.user else None,
         }
