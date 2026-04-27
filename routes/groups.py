@@ -417,3 +417,44 @@ def change_member_role(group_id, user_id):
     db.session.commit()
 
     return jsonify({'membership': membership.to_dict()}), 200
+
+
+@groups_bp.route('/<group_id>/public-keys', methods=['GET'])
+@jwt_required()
+@require_group_role('OWNER', 'ADMIN', 'MEMBER', 'READONLY')
+def list_member_public_keys(group_id):
+    """Listar claves públicas RSA de los miembros del grupo.
+
+    Necesario para que el cliente pueda re-cifrar la clave AES de un secreto
+    al compartir con el grupo (RF04). Solo accesible por miembros del grupo.
+    ---
+    tags: [groups]
+    security: [{Bearer: []}]
+    parameters:
+      - in: path
+        name: group_id
+        required: true
+        type: string
+    responses:
+      200: {description: Claves públicas de los miembros activos}
+      403: {description: No es miembro del grupo}
+      404: {description: Grupo no encontrado}
+    """
+    memberships = (
+        GroupMembership.query
+        .filter_by(group_id=group_id)
+        .join(User, User.id == GroupMembership.user_id)
+        .filter(User.is_active.is_(True))
+        .all()
+    )
+    return jsonify({
+        'group_id': group_id,
+        'members': [{
+            'user_id': m.user_id,
+            'email': m.user.email,
+            'nombre': m.user.nombre,
+            'apellidos': m.user.apellidos,
+            'role_in_group': m.role_in_group.value,
+            'public_key': m.user.public_key,
+        } for m in memberships],
+    }), 200

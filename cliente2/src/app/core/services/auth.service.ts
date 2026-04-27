@@ -217,6 +217,10 @@ export class AuthService {
     return !!user && roles.includes(user.role);
   }
 
+  getCurrentUserId(): number | null {
+    return this.currentUserSubject.value?.id ?? null;
+  }
+
   /**
    * Comprobar si el usuario actual es administrador
    */

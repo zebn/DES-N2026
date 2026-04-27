@@ -17,11 +17,16 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatTabsModule } from '@angular/material/tabs';
 
 import { SecretsRoutingModule } from './secrets-routing.module';
 import { SecretsListComponent } from './secrets-list/secrets-list.component';
 import { SecretCreateDialogComponent } from './secret-create-dialog/secret-create-dialog.component';
 import { SecretDetailDialogComponent } from './secret-detail-dialog/secret-detail-dialog.component';
+import { SecretShareDialogComponent } from './secret-share-dialog/secret-share-dialog.component';
+import { SharedWithMeComponent } from './shared-with-me/shared-with-me.component';
 import { SharedModule } from '../../shared/shared.module';
 
 @NgModule({
@@ -29,6 +34,8 @@ import { SharedModule } from '../../shared/shared.module';
     SecretsListComponent,
     SecretCreateDialogComponent,
     SecretDetailDialogComponent,
+    SecretShareDialogComponent,
+    SharedWithMeComponent,
   ],
   imports: [
     CommonModule,
@@ -50,6 +57,9 @@ import { SharedModule } from '../../shared/shared.module';
     MatPaginatorModule,
     MatChipsModule,
     MatTooltipModule,
+    MatRadioModule,
+    MatCheckboxModule,
+    MatTabsModule,
   ]
 })
 export class SecretsModule { }
