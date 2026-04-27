@@ -49,6 +49,11 @@ const routes: Routes = [
     loadChildren: () => import('./features/audit/audit.module').then(m => m.AuditModule),
     canActivate: [AuthGuard, RoleGuard],
     data: { roles: ['ADMIN', 'AUDITOR'] }
+  },
+  {
+    path: 'backup',
+    loadChildren: () => import('./features/backup/backup.module').then(m => m.BackupModule),
+    canActivate: [AuthGuard]
   }
 ];
 
