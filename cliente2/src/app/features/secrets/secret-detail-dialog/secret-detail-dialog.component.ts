@@ -1,11 +1,12 @@
 import { Component, Inject, OnInit } from '@angular/core';
-import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import {
   SecretsService, Secret, Folder, SecretVersion,
   SECRET_TYPE_LABELS, SECRET_TYPE_ICONS, SecretType
 } from '../../../core/services/secrets.service';
 import { CryptoService } from '../../../core/services/crypto.service';
+import { SecretShareDialogComponent } from '../secret-share-dialog/secret-share-dialog.component';
 
 @Component({
   selector: 'app-secret-detail-dialog',
@@ -125,6 +126,10 @@ import { CryptoService } from '../../../core/services/crypto.service';
 
     <mat-dialog-actions align="end">
       <button mat-button (click)="dialogRef.close()">Cerrar</button>
+      <button mat-button color="primary" (click)="openShareDialog()">
+        <mat-icon>share</mat-icon>
+        Compartir
+      </button>
       <button mat-button color="warn" (click)="confirmDelete()">
         <mat-icon>delete</mat-icon>
         Eliminar
@@ -384,8 +389,20 @@ export class SecretDetailDialogComponent implements OnInit {
     private secretsService: SecretsService,
     private cryptoService: CryptoService,
     private snackBar: MatSnackBar,
+    private dialog: MatDialog,
   ) {
     this.secret = data.secret;
+  }
+
+  openShareDialog(): void {
+    if (!this.cryptoService.isUnlocked()) {
+      this.snackBar.open('Desbloquea tu clave privada antes de compartir', 'Cerrar', { duration: 4000 });
+      return;
+    }
+    this.dialog.open(SecretShareDialogComponent, {
+      width: '600px',
+      data: { secret: this.secret }
+    });
   }
 
   ngOnInit(): void {
