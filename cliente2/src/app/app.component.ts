@@ -75,6 +75,11 @@ import { AuthService, User } from './core/services/auth.service';
               <span matListItemTitle>Grupos</span>
             </a>
 
+            <a mat-list-item routerLink="/backup" routerLinkActive="active-link">
+              <mat-icon matListItemIcon>backup</mat-icon>
+              <span matListItemTitle>Backup</span>
+            </a>
+
             <mat-divider></mat-divider>
 
             <!-- Admin-only section -->
