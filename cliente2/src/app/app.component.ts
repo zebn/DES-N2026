@@ -70,6 +70,11 @@ import { AuthService, User } from './core/services/auth.service';
               <span matListItemTitle>Gestión de Carpetas</span>
             </a>
 
+            <a mat-list-item routerLink="/groups" routerLinkActive="active-link">
+              <mat-icon matListItemIcon>group</mat-icon>
+              <span matListItemTitle>Grupos</span>
+            </a>
+
             <mat-divider></mat-divider>
 
             <!-- Admin-only section -->
