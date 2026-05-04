@@ -684,3 +684,104 @@ class SecretShare(db.Model):
                 'owner_public_key': self.secret.owner.public_key if self.secret.owner else None,
             }
         return data
+
+
+# ─── Gestión de sesiones (RF05) ────────────────────────────────────────────────
+
+class Session(db.Model):
+    """Sesión activa asociada a un access token JWT.
+
+    Permite revocar tokens de forma individual o masiva (RF05) y mantener
+    visibilidad de las sesiones del usuario (IP, user-agent, último uso).
+    El campo ``token_jti`` corresponde al claim ``jti`` del JWT y es la pieza
+    contra la que se valida el blocklist en ``token_in_blocklist_loader``.
+    """
+    __tablename__ = 'sessions'
+    __table_args__ = (
+        db.Index('ix_sessions_user', 'user_id'),
+        db.Index('ix_sessions_jti', 'token_jti', unique=True),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'),
+                        nullable=False)
+    token_jti = db.Column(db.String(64), nullable=False, unique=True)
+
+    ip_address = db.Column(db.String(45))   # IPv6 caben en 45 chars
+    user_agent = db.Column(db.String(500))
+    device_info = db.Column(db.String(255))
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    last_activity = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+
+    is_revoked = db.Column(db.Boolean, default=False, nullable=False)
+    revoked_at = db.Column(db.DateTime)
+    revoked_reason = db.Column(db.String(120))
+
+    user = db.relationship('User', backref=db.backref('sessions', lazy='dynamic',
+                                                      cascade='all, delete-orphan'))
+
+    @staticmethod
+    def parse_device_info(user_agent: str) -> str:
+        """Heurística simple para extraer la plataforma del User-Agent.
+
+        Mantenemos la implementación intencionadamente sencilla para no añadir
+        dependencias externas (RNF: minimización de dependencias).
+        """
+        if not user_agent:
+            return 'Desconocido'
+        ua = user_agent.lower()
+        # Orden importa: Electron antes que Chrome
+        if 'electron' in ua:
+            os_part = 'Windows' if 'windows' in ua else 'macOS' if 'mac os' in ua or 'macintosh' in ua else 'Linux' if 'linux' in ua else ''
+            return f"SentryVault Desktop ({os_part})".strip(' ()') or 'SentryVault Desktop'
+        if 'edg/' in ua:
+            browser = 'Edge'
+        elif 'firefox' in ua:
+            browser = 'Firefox'
+        elif 'chrome' in ua:
+            browser = 'Chrome'
+        elif 'safari' in ua:
+            browser = 'Safari'
+        else:
+            browser = 'Navegador'
+        if 'windows' in ua:
+            os_part = 'Windows'
+        elif 'mac os' in ua or 'macintosh' in ua:
+            os_part = 'macOS'
+        elif 'android' in ua:
+            os_part = 'Android'
+        elif 'iphone' in ua or 'ipad' in ua or 'ios' in ua:
+            os_part = 'iOS'
+        elif 'linux' in ua:
+            os_part = 'Linux'
+        else:
+            os_part = ''
+        return f"{browser} en {os_part}".strip().rstrip(' en') or browser
+
+    def revoke(self, reason: str = None):
+        """Marcar la sesión como revocada (idempotente)."""
+        if self.is_revoked:
+            return
+        self.is_revoked = True
+        self.revoked_at = datetime.utcnow()
+        self.revoked_reason = reason
+
+    def is_expired(self) -> bool:
+        return datetime.utcnow() >= self.expires_at
+
+    def to_dict(self, current_jti: str = None) -> dict:
+        return {
+            'id': self.id,
+            'ip_address': self.ip_address,
+            'user_agent': self.user_agent,
+            'device_info': self.device_info,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_activity': self.last_activity.isoformat() if self.last_activity else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'is_revoked': self.is_revoked,
+            'revoked_at': self.revoked_at.isoformat() if self.revoked_at else None,
+            'revoked_reason': self.revoked_reason,
+            'is_current': current_jti is not None and self.token_jti == current_jti,
+        }
