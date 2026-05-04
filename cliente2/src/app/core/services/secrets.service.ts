@@ -51,6 +51,50 @@ export interface SecretVersion {
   created_at: string;
 }
 
+export interface SecretShare {
+  id: string;
+  secret_id: string;
+  shared_by_id: number;
+  shared_by_email: string | null;
+  shared_with_user_id: number;
+  shared_with_user_email: string | null;
+  shared_with_user_name: string | null;
+  shared_with_group_id: string | null;
+  shared_with_group_name: string | null;
+  can_read: boolean;
+  can_edit: boolean;
+  can_share: boolean;
+  shared_at: string;
+  expires_at: string | null;
+  is_revoked: boolean;
+  revoked_at: string | null;
+  is_active: boolean;
+  encrypted_aes_key_for_recipient?: string;
+  secret?: {
+    id: string;
+    title: string;
+    url?: string | null;
+    secret_type: string;
+    version: number;
+    content_hash: string;
+    updated_at: string;
+    owner_id: number;
+    owner_public_key: string;
+  };
+}
+
+export interface ShareRecipient {
+  user_id: number;
+  encrypted_aes_key_for_recipient: string;
+}
+
+export interface SharePermissions {
+  can_read?: boolean;
+  can_edit?: boolean;
+  can_share?: boolean;
+  expires_at?: string;
+}
+
 export type SecretType = 'PASSWORD' | 'API_KEY' | 'CERTIFICATE' | 'SSH_KEY' | 'NOTE' | 'DATABASE' | 'ENV_VARIABLE' | 'IDENTITY';
 
 export const SECRET_TYPE_LABELS: Record<SecretType, string> = {
@@ -151,6 +195,67 @@ export class SecretsService {
 
   verifyIntegrity(id: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/${id}/verify`, {});
+  }
+
+  // ─── Compartición (RF04) ──────────────────────────────────────────
+
+  shareSecret(
+    secretId: string,
+    payload: {
+      target_type: 'user' | 'group';
+      target_id: number | string;
+      recipients: ShareRecipient[];
+      can_read?: boolean;
+      can_edit?: boolean;
+      can_share?: boolean;
+      expires_at?: string;
+    }
+  ): Observable<{ message: string; share_ids: string[]; recipient_count: number }> {
+    return this.http.post<{ message: string; share_ids: string[]; recipient_count: number }>(
+      `${this.apiUrl}/${secretId}/share`,
+      payload
+    );
+  }
+
+  listSharedWithMe(params?: { page?: number; per_page?: number }):
+      Observable<{ shares: SecretShare[]; total: number; page: number; per_page: number; pages: number }> {
+    let httpParams = new HttpParams();
+    if (params?.page) httpParams = httpParams.set('page', params.page.toString());
+    if (params?.per_page) httpParams = httpParams.set('per_page', params.per_page.toString());
+    return this.http.get<{ shares: SecretShare[]; total: number; page: number; per_page: number; pages: number }>(
+      `${this.apiUrl}/shared-with-me`, { params: httpParams }
+    );
+  }
+
+  listShares(secretId: string): Observable<{ shares: SecretShare[]; total: number }> {
+    return this.http.get<{ shares: SecretShare[]; total: number }>(
+      `${this.apiUrl}/${secretId}/shares`
+    );
+  }
+
+  revokeShare(shareId: string): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(`${this.apiUrl}/shares/${shareId}`);
+  }
+
+  accessSharedSecret(shareId: string): Observable<{
+    share: SecretShare;
+    secret: {
+      id: string;
+      title: string;
+      url?: string | null;
+      secret_type: string;
+      version: number;
+      content_hash: string;
+      encrypted_data: string;
+      digital_signature: string;
+      tags: string | null;
+      expires_at: string | null;
+      updated_at: string;
+      owner_id: number;
+      owner_public_key: string;
+    };
+  }> {
+    return this.http.post<any>(`${this.apiUrl}/shares/${shareId}/access`, {});
   }
 
   // ─── Folders ───────────────────────────────────────────────────────

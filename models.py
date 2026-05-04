@@ -590,3 +590,97 @@ class GroupMembership(db.Model):
             'user_email': self.user.email if self.user else None,
             'user_name': (self.user.nombre + ' ' + self.user.apellidos) if self.user else None,
         }
+
+
+# ─── Compartición de secretos (RF04) ──────────────────────────────────────────
+
+class SecretShare(db.Model):
+    """Compartición de un secreto con un usuario individual o como parte de un grupo.
+
+    Una fila por destinatario final (siempre un usuario). Cuando se comparte
+    con un grupo se crean N filas con el mismo ``shared_with_group_id``
+    (provenance) y un ``encrypted_aes_key_for_recipient`` distinto, re-cifrado
+    con la clave pública RSA-4096 de cada miembro. El servidor nunca ve la
+    clave AES en claro: el modelo Zero Knowledge se mantiene.
+    """
+    __tablename__ = 'secret_shares'
+    __table_args__ = (
+        db.Index('ix_secret_shares_secret', 'secret_id'),
+        db.Index('ix_secret_shares_user', 'shared_with_user_id'),
+        db.Index('ix_secret_shares_group', 'shared_with_group_id'),
+        db.UniqueConstraint('secret_id', 'shared_with_user_id', 'shared_with_group_id',
+                            name='uq_share_secret_user_group'),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    secret_id = db.Column(db.String(36),
+                          db.ForeignKey('secrets.id', ondelete='CASCADE'),
+                          nullable=False)
+    shared_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    shared_with_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    shared_with_group_id = db.Column(db.String(36),
+                                     db.ForeignKey('groups.id', ondelete='SET NULL'),
+                                     nullable=True)
+
+    encrypted_aes_key_for_recipient = db.Column(db.Text, nullable=False)
+
+    can_read = db.Column(db.Boolean, default=True, nullable=False)
+    can_edit = db.Column(db.Boolean, default=False, nullable=False)
+    can_share = db.Column(db.Boolean, default=False, nullable=False)
+
+    shared_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    is_revoked = db.Column(db.Boolean, default=False, nullable=False)
+    revoked_at = db.Column(db.DateTime, nullable=True)
+
+    secret = db.relationship('Secret', backref=db.backref('shares', lazy='dynamic',
+                                                          cascade='all, delete-orphan'))
+    shared_by = db.relationship('User', foreign_keys=[shared_by_id],
+                                backref=db.backref('secret_shares_given', lazy='dynamic'))
+    shared_with_user = db.relationship('User', foreign_keys=[shared_with_user_id],
+                                       backref=db.backref('secret_shares_received', lazy='dynamic'))
+    group = db.relationship('Group', backref=db.backref('secret_shares', lazy='dynamic'))
+
+    def is_active(self) -> bool:
+        if self.is_revoked:
+            return False
+        if self.expires_at and self.expires_at < datetime.utcnow():
+            return False
+        return True
+
+    def to_dict(self, include_encrypted=False, include_secret_meta=False):
+        data = {
+            'id': self.id,
+            'secret_id': self.secret_id,
+            'shared_by_id': self.shared_by_id,
+            'shared_by_email': self.shared_by.email if self.shared_by else None,
+            'shared_with_user_id': self.shared_with_user_id,
+            'shared_with_user_email': self.shared_with_user.email if self.shared_with_user else None,
+            'shared_with_user_name': (self.shared_with_user.nombre + ' ' + self.shared_with_user.apellidos)
+                                     if self.shared_with_user else None,
+            'shared_with_group_id': self.shared_with_group_id,
+            'shared_with_group_name': self.group.name if self.group else None,
+            'can_read': self.can_read,
+            'can_edit': self.can_edit,
+            'can_share': self.can_share,
+            'shared_at': self.shared_at.isoformat() if self.shared_at else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'is_revoked': self.is_revoked,
+            'revoked_at': self.revoked_at.isoformat() if self.revoked_at else None,
+            'is_active': self.is_active(),
+        }
+        if include_encrypted:
+            data['encrypted_aes_key_for_recipient'] = self.encrypted_aes_key_for_recipient
+        if include_secret_meta and self.secret:
+            data['secret'] = {
+                'id': self.secret.id,
+                'title': self.secret.title,
+                'url': self.secret.url,
+                'secret_type': self.secret.secret_type.value,
+                'version': self.secret.version,
+                'content_hash': self.secret.content_hash,
+                'updated_at': self.secret.updated_at.isoformat() if self.secret.updated_at else None,
+                'owner_id': self.secret.owner_id,
+                'owner_public_key': self.secret.owner.public_key if self.secret.owner else None,
+            }
+        return data

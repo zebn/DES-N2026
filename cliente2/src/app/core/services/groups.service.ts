@@ -78,4 +78,18 @@ export class GroupsService {
   changeMemberRole(groupId: string, userId: number, role: GroupRole): Observable<{ membership: GroupMember }> {
     return this.http.put<{ membership: GroupMember }>(`${this.apiUrl}/${groupId}/members/${userId}/role`, { role_in_group: role });
   }
+
+  getMemberPublicKeys(groupId: string): Observable<{
+    group_id: string;
+    members: Array<{
+      user_id: number;
+      email: string;
+      nombre: string;
+      apellidos: string;
+      role_in_group: GroupRole;
+      public_key: string;
+    }>;
+  }> {
+    return this.http.get<any>(`${this.apiUrl}/${groupId}/public-keys`);
+  }
 }
