@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService, User } from '../../core/services/auth.service';
+import { SessionsService, UserSession } from '../../core/services/sessions.service';
 import { Setup2FADialogComponent } from '../../shared/components/setup-2fa-dialog/setup-2fa-dialog.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { FormControl, Validators } from '@angular/forms';
@@ -107,6 +108,63 @@ import { FormControl, Validators } from '@angular/forms';
                   <span *ngIf="!isDisabling">Confirmar Deshabilitación</span>
                 </button>
               </div>
+            </div>
+          </div>
+
+          <mat-divider></mat-divider>
+
+          <!-- Sessions Section (RF05) -->
+          <div class="sessions-section">
+            <h3>
+              <mat-icon>devices</mat-icon>
+              Sesiones activas
+              <button mat-icon-button (click)="loadSessions()" [disabled]="isLoadingSessions"
+                      matTooltip="Refrescar" class="refresh-btn">
+                <mat-icon>refresh</mat-icon>
+              </button>
+            </h3>
+
+            <div class="sessions-loading" *ngIf="isLoadingSessions && !sessions.length">
+              <mat-spinner diameter="24"></mat-spinner>
+              <span>Cargando sesiones...</span>
+            </div>
+
+            <div class="sessions-empty" *ngIf="!isLoadingSessions && !sessions.length">
+              No hay sesiones activas registradas.
+            </div>
+
+            <div class="session-row" *ngFor="let s of sessions">
+              <div class="session-info">
+                <mat-icon>{{ getSessionIcon(s.device_info) }}</mat-icon>
+                <div>
+                  <strong>{{ s.device_info || 'Dispositivo desconocido' }}</strong>
+                  <p class="session-meta">
+                    <span>{{ s.ip_address || 'IP desconocida' }}</span>
+                    <span>·</span>
+                    <span>Última actividad: {{ s.last_activity | date:'short' }}</span>
+                  </p>
+                  <p class="session-meta dim">
+                    Creada: {{ s.created_at | date:'short' }} · Expira: {{ s.expires_at | date:'short' }}
+                  </p>
+                </div>
+              </div>
+              <div class="session-actions">
+                <mat-chip *ngIf="s.is_current" color="primary" selected>Esta sesión</mat-chip>
+                <button mat-stroked-button color="warn"
+                        *ngIf="!s.is_current && !s.is_revoked"
+                        (click)="revokeSession(s)">
+                  <mat-icon>logout</mat-icon>
+                  Revocar
+                </button>
+              </div>
+            </div>
+
+            <div class="sessions-footer" *ngIf="otherActiveCount > 0">
+              <button mat-raised-button color="warn" (click)="revokeAllOthers()" [disabled]="isRevokingAll">
+                <mat-spinner diameter="18" *ngIf="isRevokingAll"></mat-spinner>
+                <mat-icon *ngIf="!isRevokingAll">block</mat-icon>
+                Cerrar las otras {{ otherActiveCount }} sesiones
+              </button>
             </div>
           </div>
 
@@ -309,6 +367,69 @@ import { FormControl, Validators } from '@angular/forms';
     .level-confidential { background-color: #2196f3 !important; color: white !important; }
     .level-secret { background-color: #ff9800 !important; color: white !important; }
     .level-top_secret { background-color: #f44336 !important; color: white !important; }
+
+    /* Sessions (RF05) */
+    .sessions-section {
+      padding: 20px 0;
+    }
+    .refresh-btn {
+      margin-left: auto;
+    }
+    .sessions-loading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #666;
+      padding: 12px 0;
+    }
+    .sessions-empty {
+      color: #888;
+      font-style: italic;
+      padding: 8px 0;
+    }
+    .session-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 12px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      gap: 16px;
+    }
+    .session-info {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .session-info > mat-icon {
+      color: #1976d2;
+      margin-top: 4px;
+    }
+    .session-info strong {
+      display: block;
+    }
+    .session-meta {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: #555;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .session-meta.dim {
+      color: #888;
+    }
+    .session-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sessions-footer {
+      margin-top: 12px;
+      display: flex;
+      justify-content: flex-end;
+    }
   `]
 })
 export class ProfileComponent implements OnInit {
@@ -317,8 +438,13 @@ export class ProfileComponent implements OnInit {
     isDisabling = false;
     disableCode = new FormControl('', [Validators.required, Validators.pattern(/^\d{6}$/)]);
 
+    sessions: UserSession[] = [];
+    isLoadingSessions = false;
+    isRevokingAll = false;
+
     constructor(
         private authService: AuthService,
+        private sessionsService: SessionsService,
         private dialog: MatDialog,
         private snackBar: MatSnackBar
     ) { }
@@ -330,6 +456,92 @@ export class ProfileComponent implements OnInit {
 
         // Reload profile to get latest 2FA status
         this.authService.loadProfile().subscribe();
+
+        // RF05 — cargar sesiones activas del usuario
+        this.loadSessions();
+    }
+
+    get otherActiveCount(): number {
+        return this.sessions.filter(s => !s.is_current && !s.is_revoked).length;
+    }
+
+    loadSessions(): void {
+        this.isLoadingSessions = true;
+        this.sessionsService.list(false).subscribe({
+            next: (res) => {
+                this.sessions = res.sessions;
+                this.isLoadingSessions = false;
+            },
+            error: (err) => {
+                this.isLoadingSessions = false;
+                this.snackBar.open(`❌ ${err.error?.error || 'Error cargando sesiones'}`, 'Cerrar', { duration: 3000 });
+            }
+        });
+    }
+
+    revokeSession(session: UserSession): void {
+        const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+            width: '420px',
+            data: {
+                title: 'Revocar sesión',
+                message: `Se cerrará la sesión iniciada en ${session.device_info || 'este dispositivo'} (${session.ip_address || 'IP desconocida'}). ¿Continuar?`,
+                confirmText: 'Revocar',
+                cancelText: 'Cancelar',
+                confirmColor: 'warn',
+                icon: 'logout'
+            }
+        });
+
+        dialogRef.afterClosed().subscribe(confirmed => {
+            if (!confirmed) return;
+            this.sessionsService.revoke(session.id).subscribe({
+                next: () => {
+                    this.snackBar.open('✅ Sesión revocada', 'Cerrar', { duration: 2500 });
+                    this.loadSessions();
+                },
+                error: (err) => {
+                    this.snackBar.open(`❌ ${err.error?.error || 'Error revocando sesión'}`, 'Cerrar', { duration: 3000 });
+                }
+            });
+        });
+    }
+
+    revokeAllOthers(): void {
+        const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+            width: '420px',
+            data: {
+                title: 'Cerrar todas las demás sesiones',
+                message: 'Se cerrarán todas tus sesiones activas excepto la actual. Tendrás que volver a iniciar sesión en los demás dispositivos.',
+                confirmText: 'Cerrar todas',
+                cancelText: 'Cancelar',
+                confirmColor: 'warn',
+                icon: 'block'
+            }
+        });
+
+        dialogRef.afterClosed().subscribe(confirmed => {
+            if (!confirmed) return;
+            this.isRevokingAll = true;
+            this.sessionsService.revokeAll().subscribe({
+                next: (res) => {
+                    this.isRevokingAll = false;
+                    this.snackBar.open(`✅ ${res.revoked_count} sesiones revocadas`, 'Cerrar', { duration: 2500 });
+                    this.loadSessions();
+                },
+                error: (err) => {
+                    this.isRevokingAll = false;
+                    this.snackBar.open(`❌ ${err.error?.error || 'Error revocando sesiones'}`, 'Cerrar', { duration: 3000 });
+                }
+            });
+        });
+    }
+
+    getSessionIcon(deviceInfo: string | null): string {
+        if (!deviceInfo) return 'devices';
+        const d = deviceInfo.toLowerCase();
+        if (d.includes('desktop')) return 'computer';
+        if (d.includes('android') || d.includes('ios')) return 'smartphone';
+        return 'language';
     }
 
     setup2FA(): void {
