@@ -1,7 +1,11 @@
 {
-    "buildCommand": "npm install && npm run build",
+    "buildCommand": "npm install && npm run build:vercel",
     "outputDirectory": "dist/protecci-n-client",
     "rewrites": [
+        {
+            "source": "/api/:path*",
+            "destination": "https://protinf-e061fd7b2275.herokuapp.com/api/:path*"
+        },
         {
             "source": "/(.*)",
             "destination": "/index.html"
