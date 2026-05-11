@@ -1,9 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 
-// In Vercel, use relative /api path (reverse proxy handles routing to backend).
+// In Vercel, apiUrl is empty — services already include /api/ in their paths.
+// The reverse proxy in vercel.json handles /api/* → backend.
 // API_URL can override for other deployment targets.
-const apiUrl = process.env.API_URL || '/api';
+const apiUrl = process.env.API_URL || '';
 
 const content = `export const environment = {
   production: true,
