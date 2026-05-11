@@ -4,12 +4,20 @@ Usa una base de datos SQLite en memoria para aislar cada test.
 """
 
 import os
+import sys
+from pathlib import Path
 import pytest
 
 # Forzar entorno de test ANTES de importar la app
 os.environ['FLASK_ENV'] = 'development'
 os.environ['SECRET_KEY'] = 'test-secret-key-for-unit-tests'
 os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-key-for-unit-tests'
+os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+
+# Asegurar que la raíz del proyecto está en sys.path (VS Code/pytest a veces ejecuta desde otro cwd)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from app import create_app
 from models import db as _db, User, UserRole

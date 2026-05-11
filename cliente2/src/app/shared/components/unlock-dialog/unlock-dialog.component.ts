@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { FormControl, Validators } from '@angular/forms';
+import { CryptoService } from '../../../core/services/crypto.service';
 
 @Component({
     selector: 'app-unlock-dialog',
@@ -17,12 +18,16 @@ import { FormControl, Validators } from '@angular/forms';
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Contraseña</mat-label>
         <input matInput type="password" [formControl]="passwordControl" 
-               (keyup.enter)="onSubmit()" autofocus>
+               (keyup.enter)="onSubmit()" autofocus [disabled]="loading">
         <mat-icon matPrefix>key</mat-icon>
         <mat-error *ngIf="passwordControl.hasError('required')">
           La contraseña es requerida
         </mat-error>
       </mat-form-field>
+
+      <mat-error *ngIf="errorMessage" style="display:block; margin-top: 8px;">
+        {{ errorMessage }}
+      </mat-error>
 
       <div class="info-box">
         <mat-icon>info</mat-icon>
@@ -30,11 +35,11 @@ import { FormControl, Validators } from '@angular/forms';
       </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button (click)="onCancel()">Cancelar</button>
+      <button mat-button (click)="onCancel()" [disabled]="loading">Cancelar</button>
       <button mat-raised-button color="primary" (click)="onSubmit()" 
-              [disabled]="!passwordControl.valid">
+              [disabled]="!passwordControl.valid || loading">
         <mat-icon>lock_open</mat-icon>
-        Desbloquear
+        {{ loading ? 'Desbloqueando...' : 'Desbloquear' }}
       </button>
     </mat-dialog-actions>
   `,
@@ -82,18 +87,32 @@ import { FormControl, Validators } from '@angular/forms';
 })
 export class UnlockDialogComponent {
     passwordControl = new FormControl('', Validators.required);
+    loading = false;
+    errorMessage = '';
 
     constructor(
-        private dialogRef: MatDialogRef<UnlockDialogComponent>
+        private dialogRef: MatDialogRef<UnlockDialogComponent>,
+        private cryptoService: CryptoService
     ) { }
 
-    onSubmit(): void {
-        if (this.passwordControl.valid) {
-            this.dialogRef.close(this.passwordControl.value);
+    async onSubmit(): Promise<void> {
+        if (!this.passwordControl.valid || this.loading) return;
+
+        this.loading = true;
+        this.errorMessage = '';
+
+        try {
+            await this.cryptoService.unlockPrivateKey(this.passwordControl.value as string);
+            this.dialogRef.close(true);
+        } catch (err: any) {
+            this.errorMessage = 'Contraseña incorrecta. Inténtalo de nuevo.';
+            this.passwordControl.setValue('');
+        } finally {
+            this.loading = false;
         }
     }
 
     onCancel(): void {
-        this.dialogRef.close(null);
+        this.dialogRef.close(false);
     }
 }

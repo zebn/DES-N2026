@@ -12,12 +12,13 @@ from flask_cors import CORS
 from flasgger import Swagger
 
 from config import config
-from models import db, bcrypt
+from models import db, bcrypt, Session
 from routes.auth import auth_bp
 from routes.files import files_bp
 from routes.secrets import secrets_bp, folders_bp
 from routes.audit import audit_bp
 from routes.groups import groups_bp
+from routes.backup import backup_bp
 
 def create_app(config_name=None):
     """Factory para crear la aplicación Flask"""
@@ -146,6 +147,10 @@ def create_app(config_name=None):
                 "description": "Gestión de grupos de usuarios y membresías"
             },
             {
+                "name": "backup",
+                "description": "Exportación e importación cifrada de secretos (.vault)"
+            },
+            {
                 "name": "system",
                 "description": "Información del sistema y health checks"
             }
@@ -161,6 +166,7 @@ def create_app(config_name=None):
     app.register_blueprint(folders_bp)
     app.register_blueprint(audit_bp)
     app.register_blueprint(groups_bp)
+    app.register_blueprint(backup_bp)
     
     # Crear tablas de base de datos si no existen
     with app.app_context():
@@ -331,19 +337,55 @@ def create_app(config_name=None):
         if os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes'):
             print(f"[DEBUG JWT] Token expirado. Header: {jwt_header}, Payload: {jwt_payload}")
         return jsonify({'error': 'Token expirado'}), 401
-    
+
     @jwt.invalid_token_loader
     def invalid_token_callback(error):
         if os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes'):
             print(f"[DEBUG JWT] Token inválido. Error: {error}")
         return jsonify({'error': 'Token inválido'}), 401
-    
+
     @jwt.unauthorized_loader
     def missing_token_callback(error):
         if os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes'):
             print(f"[DEBUG JWT] Token faltante. Error: {error}")
         return jsonify({'error': 'Token requerido'}), 401
-    
+
+    # RF05 — Token blocklist y actualización de last_activity
+    # El callback se invoca en cada request con @jwt_required(); se aprovecha
+    # para refrescar el last_activity de la sesión sin un middleware aparte.
+    @jwt.token_in_blocklist_loader
+    def is_token_revoked(jwt_header, jwt_payload):
+        # Solo aplicamos blocklist a access tokens; los refresh tokens no
+        # tienen Session asociada (el modelo trackea la sesión activa).
+        if jwt_payload.get('type') == 'refresh':
+            return False
+        jti = jwt_payload.get('jti')
+        if not jti:
+            return False
+        session = Session.query.filter_by(token_jti=jti).first()
+        if session is None:
+            # Token emitido antes de RF05 o sin Session: lo aceptamos.
+            return False
+        if session.is_revoked:
+            return True
+        if session.is_expired():
+            session.revoke(reason='expired')
+            db.session.commit()
+            return True
+        # Refrescar last_activity (no se persiste si falla otra parte de la
+        # request — el commit lo hace el endpoint correspondiente).
+        from datetime import datetime as _dt
+        session.last_activity = _dt.utcnow()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        return False
+
+    @jwt.revoked_token_loader
+    def revoked_token_callback(jwt_header, jwt_payload):
+        return jsonify({'error': 'Sesión revocada o expirada'}), 401
+
     return app
 
 def init_admin_user(app):

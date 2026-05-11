@@ -60,14 +60,29 @@ import { AuthService, User } from './core/services/auth.service';
             <mat-divider></mat-divider>
             -->
 
-            <a mat-list-item routerLink="/secrets" routerLinkActive="active-link">
+            <a mat-list-item routerLink="/secrets" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">
               <mat-icon matListItemIcon>lock</mat-icon>
               <span matListItemTitle>Bóveda de Secretos</span>
+            </a>
+
+            <a mat-list-item routerLink="/secrets/shared-with-me" routerLinkActive="active-link">
+              <mat-icon matListItemIcon>inbox</mat-icon>
+              <span matListItemTitle>Compartido conmigo</span>
             </a>
 
             <a mat-list-item routerLink="/folders" routerLinkActive="active-link">
               <mat-icon matListItemIcon>folder</mat-icon>
               <span matListItemTitle>Gestión de Carpetas</span>
+            </a>
+
+            <a mat-list-item routerLink="/groups" routerLinkActive="active-link">
+              <mat-icon matListItemIcon>group</mat-icon>
+              <span matListItemTitle>Grupos</span>
+            </a>
+
+            <a mat-list-item routerLink="/backup" routerLinkActive="active-link">
+              <mat-icon matListItemIcon>backup</mat-icon>
+              <span matListItemTitle>Backup</span>
             </a>
 
             <mat-divider></mat-divider>

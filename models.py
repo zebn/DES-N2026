@@ -1,35 +1,28 @@
-from flask_sqlalchemy import SQLAlchemy
+﻿from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
+from flask_bcrypt import Bcrypt
 from datetime import datetime
+import json
 import uuid
-from enum import Enum
-import secrets
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Configuración
-# ─────────────────────────────────────────────────────────────────────────────
+import enum
 
 db = SQLAlchemy()
 ma = Marshmallow()
-
-def generate_uuid() -> str:
-    return str(uuid.uuid4())
+bcrypt = Bcrypt()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Enums
-# ─────────────────────────────────────────────────────────────────────────────
+# тФАтФАтФА Enums тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
 
-class UserRole(str, Enum):
-    """Roles de usuario"""
+class UserRole(enum.Enum):
+    """Roles del sistema RBAC"""
     ADMIN = 'ADMIN'
     MANAGER = 'MANAGER'
     USER = 'USER'
-    GUEST = 'GUEST'
+    AUDITOR = 'AUDITOR'
 
 
-class SecretType(str, Enum):
-    """Tipos de secretos soportados"""
+class SecretType(enum.Enum):
+    """Tipos de secreto soportados"""
     PASSWORD = 'PASSWORD'
     API_KEY = 'API_KEY'
     CERTIFICATE = 'CERTIFICATE'
@@ -40,45 +33,222 @@ class SecretType(str, Enum):
     IDENTITY = 'IDENTITY'
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Modelos
-# ─────────────────────────────────────────────────────────────────────────────
+class GroupRole(enum.Enum):
+    """Roles dentro de un grupo (distintos del RBAC global)"""
+    OWNER = 'OWNER'
+    ADMIN = 'ADMIN'
+    MEMBER = 'MEMBER'
+    READONLY = 'READONLY'
+
+
+def generate_uuid():
+    """Generar UUID como string para primary keys"""
+    return str(uuid.uuid4())
 
 class User(db.Model):
-    """Modelo de usuario con criptografía RSA-4096"""
+    """Modelo de usuario con criptograf├нa asim├йtrica"""
     __tablename__ = 'users'
-
+    
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    
+    # Informaci├│n personal
+    nombre = db.Column(db.String(100), nullable=False)
+    apellidos = db.Column(db.String(200), nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    telefono = db.Column(db.String(20))
+    
+    # Autenticaci├│n
     password_hash = db.Column(db.String(255), nullable=False)
-
-    # Claves RSA-4096 (public en claro, private no se guarda en DB)
-    public_key = db.Column(db.Text, nullable=False)  # PEM format
-
-    # Datos opcionales
-    full_name = db.Column(db.String(120))
-    phone = db.Column(db.String(20))
+    salt = db.Column(db.String(64), nullable=False)
+    
+    # Autorizaci├│n y roles (RBAC)
+    role = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.USER)
     is_active = db.Column(db.Boolean, default=True)
-    role = db.Column(db.Enum(UserRole), default=UserRole.USER, nullable=False)
 
-    # Metadata de sesión
-    last_login_at = db.Column(db.DateTime)
+    # Campos legacy тАФ se mantienen para compatibilidad durante migraci├│n
+    is_admin = db.Column(db.Boolean, default=False)
+    clearance_level = db.Column(db.String(20), default='CONFIDENTIAL')
+    
+    # Criptograf├нa asim├йtrica (generada en cliente)
+    public_key = db.Column(db.Text, nullable=False)
+    private_key_encrypted = db.Column(db.Text, nullable=False)  # Cifrada con password
+    key_derivation_params = db.Column(db.Text, nullable=False)  # JSON con par├бmetros
+    
+    # 2FA
+    totp_secret = db.Column(db.String(32))
+    is_2fa_enabled = db.Column(db.Boolean, default=False)
+    hotp_counter = db.Column(db.Integer, default=0)
+    
+    # Control de seguridad
     failed_login_attempts = db.Column(db.Integer, default=0)
     locked_until = db.Column(db.DateTime)
-
+    last_login = db.Column(db.DateTime)
+    
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relaciones
+    files = db.relationship('SecureFile', backref='owner', lazy='dynamic', cascade='all, delete-orphan')
+    operations = db.relationship('SignedOperation', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    
+    def set_password(self, password, salt):
+        """Establecer hash de contrase├▒a con sal"""
+        import hashlib
+        # Combinar password y salt usando hash para evitar l├нmite de 72 bytes
+        combined = hashlib.sha256((password + salt).encode()).hexdigest()
+        self.password_hash = bcrypt.generate_password_hash(combined).decode('utf-8')
+        self.salt = salt
+    
+    def check_password(self, password):
+        """Verificar contrase├▒a"""
+        import hashlib
+        combined = hashlib.sha256((password + self.salt).encode()).hexdigest()
+        return bcrypt.check_password_hash(self.password_hash, combined)
+    
+    def is_locked(self):
+        """Verificar si la cuenta est├б bloqueada"""
+        if self.locked_until:
+            return datetime.utcnow() < self.locked_until
+        return False
+    
+    def get_derivation_params(self):
+        """Obtener par├бmetros de derivaci├│n de clave como dict"""
+        return json.loads(self.key_derivation_params)
+    
+    @property
+    def is_admin_role(self):
+        """Comprobar si el usuario tiene rol ADMIN (sustituye is_admin)"""
+        return self.role == UserRole.ADMIN
 
+    def has_role(self, *roles: str) -> bool:
+        """Verificar si el usuario tiene uno de los roles indicados.
+
+        Acepta nombres de rol como strings (e.g. 'ADMIN', 'MANAGER').
+        """
+        return self.role.value in roles
+
+    def has_clearance(self, required_level):
+        """Verificar si el usuario tiene el nivel de autorizaci├│n requerido (legacy)"""
+        levels = {'RESTRICTED': 1, 'CONFIDENTIAL': 2, 'SECRET': 3, 'TOP_SECRET': 4}
+        user_level = levels.get(self.clearance_level, 0)
+        required = levels.get(required_level, 4)
+        return user_level >= required
+    
     def to_dict(self):
+        """Convertir a diccionario para JSON"""
         return {
             'id': self.id,
-            'username': self.username,
+            'nombre': self.nombre,
+            'apellidos': self.apellidos,
             'email': self.email,
-            'full_name': self.full_name,
-            'role': self.role.value,
+            'telefono': self.telefono,
+            'role': self.role.value if self.role else 'USER',
+            'clearance_level': self.clearance_level,
+            'is_admin': self.role == UserRole.ADMIN if self.role else self.is_admin,
             'is_active': self.is_active,
+            'is_2fa_enabled': self.is_2fa_enabled,
+            'public_key': self.public_key,
+            'encrypted_private_key': self.private_key_encrypted,
+            'key_derivation_params': self.key_derivation_params,
+            'created_at': self.created_at.isoformat(),
+            'last_login': self.last_login.isoformat() if self.last_login else None
+        }
+
+class SecureFile(db.Model):
+    """Modelo para archivos cifrados"""
+    __tablename__ = 'secure_files'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Informaci├│n del archivo
+    title = db.Column(db.String(255), nullable=False)
+    original_filename = db.Column(db.String(500), nullable=False)
+    file_size = db.Column(db.Integer, nullable=False)
+    mime_type = db.Column(db.String(100), nullable=False)
+    
+    # Clasificaci├│n de seguridad
+    classification_level = db.Column(db.String(20), nullable=False)
+    compartments = db.Column(db.String(500))  # Compartimentos adicionales
+    
+    # Criptograf├нa
+    encrypted_content = db.Column(db.LargeBinary, nullable=False)  # Archivo cifrado
+    encrypted_aes_key = db.Column(db.Text, nullable=False)  # Clave AES cifrada con RSA
+    file_hash = db.Column(db.String(64), nullable=False)  # SHA-256 original
+    encrypted_hash = db.Column(db.String(64), nullable=False)  # Hash del cifrado
+    
+    # Firma digital
+    digital_signature = db.Column(db.Text, nullable=False)
+    signature_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Control de integridad
+    integrity_checks = db.Column(db.Integer, default=0)
+    last_integrity_check = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    expires_at = db.Column(db.DateTime)  # Expiraci├│n autom├бtica
+    
+    # Relaciones
+    access_logs = db.relationship('FileAccessLog', backref='file', lazy='dynamic', cascade='all, delete-orphan')
+    shares = db.relationship('FileShare', backref='file', lazy='dynamic', cascade='all, delete-orphan')
+    
+    def to_dict(self):
+        """Convertir a diccionario para JSON"""
+        return {
+            'id': self.id,
+            'title': self.title,
+            'original_filename': self.original_filename,
+            'file_size': self.file_size,
+            'mime_type': self.mime_type,
+            'classification_level': self.classification_level,
+            'compartments': self.compartments,
+            'encrypted_aes_key': self.encrypted_aes_key,  # Needed for sharing
+            'file_hash': self.file_hash,
+            'signature_timestamp': self.signature_timestamp.isoformat(),
+            'created_at': self.created_at.isoformat(),
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'owner': self.owner.nombre + ' ' + self.owner.apellidos
+        }
+
+class SignedOperation(db.Model):
+    """Modelo para operaciones que requieren firma digital"""
+    __tablename__ = 'signed_operations'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Detalles de la operaci├│n
+    operation_type = db.Column(db.String(50), nullable=False)  # UPLOAD, DOWNLOAD, DELETE, SHARE
+    operation_data = db.Column(db.Text, nullable=False)  # JSON con datos
+    operation_hash = db.Column(db.String(64), nullable=False)  # Hash de la operaci├│n
+    
+    # Firma digital
+    digital_signature = db.Column(db.Text, nullable=False)
+    signature_method = db.Column(db.String(20), default='RSA_PSS')  # RSA_PSS o HOTP
+    hotp_value = db.Column(db.String(10))  # Solo si se usa HOTP
+    
+    # Estado
+    is_executed = db.Column(db.Boolean, default=False)
+    executed_at = db.Column(db.DateTime)
+    is_verified = db.Column(db.Boolean, default=False)
+    verification_notes = db.Column(db.Text)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    
+    def to_dict(self):
+        """Convertir a diccionario para JSON"""
+        return {
+            'id': self.id,
+            'operation_type': self.operation_type,
+            'operation_hash': self.operation_hash,
+            'signature_method': self.signature_method,
+            'is_executed': self.is_executed,
+            'is_verified': self.is_verified,
             'created_at': self.created_at.isoformat(),
             'expires_at': self.expires_at.isoformat(),
             'executed_at': self.executed_at.isoformat() if self.executed_at else None
@@ -110,7 +280,7 @@ class FileShare(db.Model):
     shared_with = db.relationship('User', foreign_keys=[shared_with_id], backref='files_received')
 
 class FileAccessLog(db.Model):
-    """Registro de accesos a archivos para auditoría"""
+    """Registro de accesos a archivos para auditor├нa"""
     __tablename__ = 'file_access_logs'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -131,13 +301,13 @@ class FileAccessLog(db.Model):
     user = db.relationship('User', backref='access_logs')
 
 class AuditLog(db.Model):
-    """Registro de auditoría general del sistema"""
+    """Registro de auditor├нa general del sistema"""
     __tablename__ = 'audit_logs'
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     
-    # Detalles de la acción
+    # Detalles de la acci├│n
     action = db.Column(db.String(50), nullable=False)
     resource_type = db.Column(db.String(50))
     resource_id = db.Column(db.String(36))  # String para soportar UUIDs de secretos
@@ -152,7 +322,7 @@ class AuditLog(db.Model):
     # Timestamp
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relación
+    # Relaci├│n
     user = db.relationship('User', backref='audit_logs')
 
     def to_dict(self):
@@ -171,10 +341,10 @@ class AuditLog(db.Model):
         }
 
 
-# ─── Nuevos modelos: Gestión de Secretos ─────────────────────────────────────
+# тФАтФАтФА Nuevos modelos: Gesti├│n de Secretos тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
 
 class Folder(db.Model):
-    """Carpetas para organizar secretos jerárquicamente"""
+    """Carpetas para organizar secretos"""
     __tablename__ = 'folders'
 
     id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
@@ -182,16 +352,18 @@ class Folder(db.Model):
     name = db.Column(db.String(255), nullable=False)
     parent_id = db.Column(db.String(36), db.ForeignKey('folders.id'), nullable=True)
 
+    # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # Relaciones
     owner = db.relationship('User', backref=db.backref('folders', lazy='dynamic'))
-    children = db.relationship('Folder', remote_side=[id], backref='parent')
+    parent = db.relationship('Folder', remote_side=[id], backref='children')
+    secrets = db.relationship('Secret', backref='folder', lazy='dynamic')
 
     def to_dict(self):
         return {
             'id': self.id,
-            'owner_id': self.owner_id,
             'name': self.name,
             'parent_id': self.parent_id,
             'created_at': self.created_at.isoformat(),
@@ -206,9 +378,9 @@ class Secret(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
-    # Metadatos (en claro — no sensibles)
+    # Metadatos (en claro тАФ no sensibles)
     title = db.Column(db.String(500), nullable=False)  # Cifrado en cliente
-    url = db.Column(db.String(500), nullable=True)     # URL сайта/сервиса (опционально, в claro)
+    url = db.Column(db.String(500), nullable=True)     # URL ╤Б╨░╨╣╤В╨░/╤Б╨╡╤А╨▓╨╕╤Б╨░ (╨╛╨┐╤Ж╨╕╨╛╨╜╨░╨╗╤М╨╜╨╛, ╨▓ claro)
     secret_type = db.Column(db.Enum(SecretType), nullable=False)
 
     # Datos cifrados E2E (el servidor NUNCA ve el contenido)
@@ -217,14 +389,14 @@ class Secret(db.Model):
     content_hash = db.Column(db.String(64), nullable=False)      # SHA-256 del plaintext
     digital_signature = db.Column(db.Text, nullable=False)       # RSA-PSS sobre content_hash
 
-    # Organización
+    # Organizaci├│n
     tags = db.Column(db.Text, nullable=True)                     # JSON de etiquetas (cifrado en cliente)
     folder_id = db.Column(db.String(36), db.ForeignKey('folders.id'), nullable=True)
 
     # Versionado
     version = db.Column(db.Integer, default=1, nullable=False)
 
-    # Caducidad y rotación
+    # Caducidad y rotaci├│n
     expires_at = db.Column(db.DateTime, nullable=True)
     rotation_period_days = db.Column(db.Integer, nullable=True)
     last_rotated_at = db.Column(db.DateTime, nullable=True)
@@ -266,3 +438,350 @@ class Secret(db.Model):
             data['encrypted_aes_key'] = self.encrypted_aes_key
             data['digital_signature'] = self.digital_signature
         return data
+
+
+class SecretVersion(db.Model):
+    """Historial de versiones de un secreto"""
+    __tablename__ = 'secret_versions'
+
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    secret_id = db.Column(db.String(36), db.ForeignKey('secrets.id'), nullable=False)
+    version_number = db.Column(db.Integer, nullable=False)
+
+    # Snapshot cifrado de esta versi├│n
+    encrypted_data = db.Column(db.Text, nullable=False)
+    encrypted_aes_key = db.Column(db.Text, nullable=False)
+    content_hash = db.Column(db.String(64), nullable=False)
+    digital_signature = db.Column(db.Text, nullable=False)
+
+    # Qui├йn y por qu├й
+    changed_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    change_reason = db.Column(db.String(500), nullable=True)
+
+    # Timestamp
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relaciones
+    changed_by = db.relationship('User', backref='secret_changes')
+
+    def to_dict(self, include_encrypted=False):
+        data = {
+            'id': self.id,
+            'secret_id': self.secret_id,
+            'version_number': self.version_number,
+            'content_hash': self.content_hash,
+            'changed_by_id': self.changed_by_id,
+            'change_reason': self.change_reason,
+            'created_at': self.created_at.isoformat(),
+        }
+        if include_encrypted:
+            data['encrypted_data'] = self.encrypted_data
+            data['encrypted_aes_key'] = self.encrypted_aes_key
+            data['digital_signature'] = self.digital_signature
+        return data
+
+
+class SecretAccessLog(db.Model):
+    """Registro de accesos a secretos para auditor├нa"""
+    __tablename__ = 'secret_access_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    secret_id = db.Column(db.String(36), db.ForeignKey('secrets.id'), nullable=True)  # nullable for failed CREATE logs
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    # Detalles del acceso
+    access_type = db.Column(db.String(30), nullable=False)  # CREATE, READ, UPDATE, DELETE, DECRYPT, SHARE, ROTATE
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.String(500))
+    success = db.Column(db.Boolean, default=True)
+    error_message = db.Column(db.String(500))
+
+    # Timestamp
+    accessed_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relaciones
+    user = db.relationship('User', backref='secret_access_logs')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'secret_id': self.secret_id,
+            'user_id': self.user_id,
+            'access_type': self.access_type,
+            'success': self.success,
+            'accessed_at': self.accessed_at.isoformat(),
+        }
+
+
+# тФАтФАтФА Gesti├│n de grupos (RF03) тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+
+class Group(db.Model):
+    """Grupo de usuarios para compartir secretos (RF03)."""
+    __tablename__ = 'groups'
+
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    creator = db.relationship('User', foreign_keys=[created_by_id],
+                              backref=db.backref('groups_created', lazy='dynamic'))
+    memberships = db.relationship('GroupMembership', backref='group',
+                                  lazy='dynamic', cascade='all, delete-orphan')
+
+    def get_members(self):
+        """Lista de memberships activas del grupo."""
+        return self.memberships.all()
+
+    def is_member(self, user_id):
+        return self.memberships.filter_by(user_id=user_id).first() is not None
+
+    def get_member_role(self, user_id):
+        """Devuelve GroupRole del usuario en el grupo, o None si no es miembro."""
+        membership = self.memberships.filter_by(user_id=user_id).first()
+        return membership.role_in_group if membership else None
+
+    def to_dict(self, include_members=False):
+        data = {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'created_by_id': self.created_by_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'member_count': self.memberships.count(),
+        }
+        if include_members:
+            data['members'] = [m.to_dict() for m in self.get_members()]
+        return data
+
+
+class GroupMembership(db.Model):
+    """Membres├нa de un usuario en un grupo con rol dentro del grupo."""
+    __tablename__ = 'group_memberships'
+    __table_args__ = (
+        db.UniqueConstraint('group_id', 'user_id', name='uq_group_user'),
+        db.Index('ix_group_memberships_group_id', 'group_id'),
+        db.Index('ix_group_memberships_user_id', 'user_id'),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    group_id = db.Column(db.String(36), db.ForeignKey('groups.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    role_in_group = db.Column(db.Enum(GroupRole), nullable=False, default=GroupRole.MEMBER)
+    added_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', foreign_keys=[user_id],
+                           backref=db.backref('group_memberships', lazy='dynamic'))
+    added_by = db.relationship('User', foreign_keys=[added_by_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'group_id': self.group_id,
+            'user_id': self.user_id,
+            'role_in_group': self.role_in_group.value,
+            'added_by_id': self.added_by_id,
+            'joined_at': self.joined_at.isoformat() if self.joined_at else None,
+            'user_email': self.user.email if self.user else None,
+            'user_name': (self.user.nombre + ' ' + self.user.apellidos) if self.user else None,
+        }
+
+
+# ─── Compartición de secretos (RF04) ──────────────────────────────────────────
+
+class SecretShare(db.Model):
+    """Compartición de un secreto con un usuario individual o como parte de un grupo.
+
+    Una fila por destinatario final (siempre un usuario). Cuando se comparte
+    con un grupo se crean N filas con el mismo ``shared_with_group_id``
+    (provenance) y un ``encrypted_aes_key_for_recipient`` distinto, re-cifrado
+    con la clave pública RSA-4096 de cada miembro. El servidor nunca ve la
+    clave AES en claro: el modelo Zero Knowledge se mantiene.
+    """
+    __tablename__ = 'secret_shares'
+    __table_args__ = (
+        db.Index('ix_secret_shares_secret', 'secret_id'),
+        db.Index('ix_secret_shares_user', 'shared_with_user_id'),
+        db.Index('ix_secret_shares_group', 'shared_with_group_id'),
+        db.UniqueConstraint('secret_id', 'shared_with_user_id', 'shared_with_group_id',
+                            name='uq_share_secret_user_group'),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    secret_id = db.Column(db.String(36),
+                          db.ForeignKey('secrets.id', ondelete='CASCADE'),
+                          nullable=False)
+    shared_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    shared_with_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    shared_with_group_id = db.Column(db.String(36),
+                                     db.ForeignKey('groups.id', ondelete='SET NULL'),
+                                     nullable=True)
+
+    encrypted_aes_key_for_recipient = db.Column(db.Text, nullable=False)
+
+    can_read = db.Column(db.Boolean, default=True, nullable=False)
+    can_edit = db.Column(db.Boolean, default=False, nullable=False)
+    can_share = db.Column(db.Boolean, default=False, nullable=False)
+
+    shared_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    is_revoked = db.Column(db.Boolean, default=False, nullable=False)
+    revoked_at = db.Column(db.DateTime, nullable=True)
+
+    secret = db.relationship('Secret', backref=db.backref('shares', lazy='dynamic',
+                                                          cascade='all, delete-orphan'))
+    shared_by = db.relationship('User', foreign_keys=[shared_by_id],
+                                backref=db.backref('secret_shares_given', lazy='dynamic'))
+    shared_with_user = db.relationship('User', foreign_keys=[shared_with_user_id],
+                                       backref=db.backref('secret_shares_received', lazy='dynamic'))
+    group = db.relationship('Group', backref=db.backref('secret_shares', lazy='dynamic'))
+
+    def is_active(self) -> bool:
+        if self.is_revoked:
+            return False
+        if self.expires_at and self.expires_at < datetime.utcnow():
+            return False
+        return True
+
+    def to_dict(self, include_encrypted=False, include_secret_meta=False):
+        data = {
+            'id': self.id,
+            'secret_id': self.secret_id,
+            'shared_by_id': self.shared_by_id,
+            'shared_by_email': self.shared_by.email if self.shared_by else None,
+            'shared_with_user_id': self.shared_with_user_id,
+            'shared_with_user_email': self.shared_with_user.email if self.shared_with_user else None,
+            'shared_with_user_name': (self.shared_with_user.nombre + ' ' + self.shared_with_user.apellidos)
+                                     if self.shared_with_user else None,
+            'shared_with_group_id': self.shared_with_group_id,
+            'shared_with_group_name': self.group.name if self.group else None,
+            'can_read': self.can_read,
+            'can_edit': self.can_edit,
+            'can_share': self.can_share,
+            'shared_at': self.shared_at.isoformat() if self.shared_at else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'is_revoked': self.is_revoked,
+            'revoked_at': self.revoked_at.isoformat() if self.revoked_at else None,
+            'is_active': self.is_active(),
+        }
+        if include_encrypted:
+            data['encrypted_aes_key_for_recipient'] = self.encrypted_aes_key_for_recipient
+        if include_secret_meta and self.secret:
+            data['secret'] = {
+                'id': self.secret.id,
+                'title': self.secret.title,
+                'url': self.secret.url,
+                'secret_type': self.secret.secret_type.value,
+                'version': self.secret.version,
+                'content_hash': self.secret.content_hash,
+                'updated_at': self.secret.updated_at.isoformat() if self.secret.updated_at else None,
+                'owner_id': self.secret.owner_id,
+                'owner_public_key': self.secret.owner.public_key if self.secret.owner else None,
+            }
+        return data
+
+
+# ─── Gestión de sesiones (RF05) ────────────────────────────────────────────────
+
+class Session(db.Model):
+    """Sesión activa asociada a un access token JWT.
+
+    Permite revocar tokens de forma individual o masiva (RF05) y mantener
+    visibilidad de las sesiones del usuario (IP, user-agent, último uso).
+    El campo ``token_jti`` corresponde al claim ``jti`` del JWT y es la pieza
+    contra la que se valida el blocklist en ``token_in_blocklist_loader``.
+    """
+    __tablename__ = 'sessions'
+    __table_args__ = (
+        db.Index('ix_sessions_user', 'user_id'),
+        db.Index('ix_sessions_jti', 'token_jti', unique=True),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'),
+                        nullable=False)
+    token_jti = db.Column(db.String(64), nullable=False, unique=True)
+
+    ip_address = db.Column(db.String(45))   # IPv6 caben en 45 chars
+    user_agent = db.Column(db.String(500))
+    device_info = db.Column(db.String(255))
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    last_activity = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+
+    is_revoked = db.Column(db.Boolean, default=False, nullable=False)
+    revoked_at = db.Column(db.DateTime)
+    revoked_reason = db.Column(db.String(120))
+
+    user = db.relationship('User', backref=db.backref('sessions', lazy='dynamic',
+                                                      cascade='all, delete-orphan'))
+
+    @staticmethod
+    def parse_device_info(user_agent: str) -> str:
+        """Heurística simple para extraer la plataforma del User-Agent.
+
+        Mantenemos la implementación intencionadamente sencilla para no añadir
+        dependencias externas (RNF: minimización de dependencias).
+        """
+        if not user_agent:
+            return 'Desconocido'
+        ua = user_agent.lower()
+        # Orden importa: Electron antes que Chrome
+        if 'electron' in ua:
+            os_part = 'Windows' if 'windows' in ua else 'macOS' if 'mac os' in ua or 'macintosh' in ua else 'Linux' if 'linux' in ua else ''
+            return f"SentryVault Desktop ({os_part})".strip(' ()') or 'SentryVault Desktop'
+        if 'edg/' in ua:
+            browser = 'Edge'
+        elif 'firefox' in ua:
+            browser = 'Firefox'
+        elif 'chrome' in ua:
+            browser = 'Chrome'
+        elif 'safari' in ua:
+            browser = 'Safari'
+        else:
+            browser = 'Navegador'
+        if 'windows' in ua:
+            os_part = 'Windows'
+        elif 'mac os' in ua or 'macintosh' in ua:
+            os_part = 'macOS'
+        elif 'android' in ua:
+            os_part = 'Android'
+        elif 'iphone' in ua or 'ipad' in ua or 'ios' in ua:
+            os_part = 'iOS'
+        elif 'linux' in ua:
+            os_part = 'Linux'
+        else:
+            os_part = ''
+        return f"{browser} en {os_part}".strip().rstrip(' en') or browser
+
+    def revoke(self, reason: str = None):
+        """Marcar la sesión como revocada (idempotente)."""
+        if self.is_revoked:
+            return
+        self.is_revoked = True
+        self.revoked_at = datetime.utcnow()
+        self.revoked_reason = reason
+
+    def is_expired(self) -> bool:
+        return datetime.utcnow() >= self.expires_at
+
+    def to_dict(self, current_jti: str = None) -> dict:
+        return {
+            'id': self.id,
+            'ip_address': self.ip_address,
+            'user_agent': self.user_agent,
+            'device_info': self.device_info,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_activity': self.last_activity.isoformat() if self.last_activity else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'is_revoked': self.is_revoked,
+            'revoked_at': self.revoked_at.isoformat() if self.revoked_at else None,
+            'revoked_reason': self.revoked_reason,
+            'is_current': current_jti is not None and self.token_jti == current_jti,
+        }

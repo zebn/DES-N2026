@@ -230,6 +230,18 @@ El **Product Requirements Document** completo está en [`docs/PRD.md`](docs/PRD.
 - [ ] Implementar rate limiting
 - [ ] Backup regular de base de datos
 
+## ✅ Tests (Python)
+
+Ejecutar tests con `pytest`:
+
+```bash
+./.venv/bin/python -m pytest
+```
+
+Notas:
+- La configuración de discovery está en `.vscode/settings.json` y `pytest.ini`.
+- Los tests fuerzan `DATABASE_URL=sqlite:///:memory:` para no tocar `instance/database.db`.
+
 ## 📝 Licencia
 
 Proyecto académico — DES-N2026 (Desarrollo de Aplicaciones Seguras, 2026)

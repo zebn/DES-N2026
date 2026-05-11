@@ -2,7 +2,7 @@ import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 
-// Material Modules
+// Angular Material
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -10,38 +10,36 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatTableModule } from '@angular/material/table';
 import { MatRadioModule } from '@angular/material/radio';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatTabsModule } from '@angular/material/tabs';
+import { MatDividerModule } from '@angular/material/divider';
 
-import { SecretsRoutingModule } from './secrets-routing.module';
-import { SecretsListComponent } from './secrets-list/secrets-list.component';
-import { SecretCreateDialogComponent } from './secret-create-dialog/secret-create-dialog.component';
-import { SecretDetailDialogComponent } from './secret-detail-dialog/secret-detail-dialog.component';
-import { SecretShareDialogComponent } from './secret-share-dialog/secret-share-dialog.component';
-import { SharedWithMeComponent } from './shared-with-me/shared-with-me.component';
+import { GroupsRoutingModule } from './groups-routing.module';
 import { SharedModule } from '../../shared/shared.module';
+
+import { GroupsListComponent } from './groups-list/groups-list.component';
+import { GroupDetailComponent } from './group-detail/group-detail.component';
+import { GroupFormDialogComponent } from './group-form-dialog/group-form-dialog.component';
+import { AddMemberDialogComponent } from './add-member-dialog/add-member-dialog.component';
 
 @NgModule({
   declarations: [
-    SecretsListComponent,
-    SecretCreateDialogComponent,
-    SecretDetailDialogComponent,
-    SecretShareDialogComponent,
-    SharedWithMeComponent,
+    GroupsListComponent,
+    GroupDetailComponent,
+    GroupFormDialogComponent,
+    AddMemberDialogComponent,
   ],
   imports: [
     CommonModule,
     ReactiveFormsModule,
     FormsModule,
-    SecretsRoutingModule,
+    GroupsRoutingModule,
     SharedModule,
     MatCardModule,
     MatButtonModule,
@@ -50,16 +48,15 @@ import { SharedModule } from '../../shared/shared.module';
     MatInputModule,
     MatSelectModule,
     MatProgressSpinnerModule,
-    MatProgressBarModule,
     MatSnackBarModule,
     MatDialogModule,
     MatMenuModule,
     MatPaginatorModule,
     MatChipsModule,
     MatTooltipModule,
+    MatTableModule,
     MatRadioModule,
-    MatCheckboxModule,
-    MatTabsModule,
+    MatDividerModule,
   ]
 })
-export class SecretsModule { }
+export class GroupsModule { }

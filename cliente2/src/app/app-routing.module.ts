@@ -29,6 +29,11 @@ const routes: Routes = [
     canActivate: [AuthGuard]
   },
   {
+    path: 'groups',
+    loadChildren: () => import('./features/groups/groups.module').then(m => m.GroupsModule),
+    canActivate: [AuthGuard]
+  },
+  {
     path: 'profile',
     loadChildren: () => import('./features/profile/profile.module').then(m => m.ProfileModule),
     canActivate: [AuthGuard]
@@ -44,6 +49,11 @@ const routes: Routes = [
     loadChildren: () => import('./features/audit/audit.module').then(m => m.AuditModule),
     canActivate: [AuthGuard, RoleGuard],
     data: { roles: ['ADMIN', 'AUDITOR'] }
+  },
+  {
+    path: 'backup',
+    loadChildren: () => import('./features/backup/backup.module').then(m => m.BackupModule),
+    canActivate: [AuthGuard]
   }
 ];
 
