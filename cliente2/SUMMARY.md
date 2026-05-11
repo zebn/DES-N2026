@@ -7,8 +7,8 @@
 npm run build:win
 ```
 **Результат:**
-- ✅ `MILCOM Secure Exchange Setup 1.0.0.exe` (90 MB) - Installer
-- ✅ `MILCOM Secure Exchange 1.0.0.exe` (90 MB) - Portable
+- ✅ `SentryVault Setup 1.0.0.exe` (90 MB) - Installer
+- ✅ `SentryVault 1.0.0.exe` (90 MB) - Portable
 
 ### 2. macOS (через GitHub Actions)
 ```bash
@@ -19,17 +19,17 @@ npm run build:mac
 git tag v1.0.0 && git push origin v1.0.0
 ```
 **Результат:**
-- ✅ `MILCOM Secure Exchange-1.0.0.dmg` (~150 MB)
-- ✅ `MILCOM Secure Exchange-1.0.0-mac.zip` (~140 MB)
+- ✅ `SentryVault-1.0.0.dmg` (~150 MB)
+- ✅ `SentryVault-1.0.0-mac.zip` (~140 MB)
 
 ### 3. Linux (на любой ОС)
 ```bash
 npm run build:linux
 ```
 **Результат:**
-- ✅ `MILCOM Secure Exchange-1.0.0.AppImage` (~130 MB)
-- ✅ `milcom-secure-exchange_1.0.0_amd64.deb` (~110 MB)
-- ✅ `MILCOM Secure Exchange-1.0.0.tar.gz`
+- ✅ `SentryVault-1.0.0.AppImage` (~130 MB)
+- ✅ `sentryvault_1.0.0_amd64.deb` (~110 MB)
+- ✅ `SentryVault-1.0.0.tar.gz`
 
 ---
 

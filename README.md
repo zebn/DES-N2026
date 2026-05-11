@@ -1,326 +1,255 @@
-# 🔐DES-N2026 - Sentryvault
+# 🔐 DES-N2026 — Sentryvault
 
-Sistema seguro de almacenamiento e intercambio de credenciales
+Sistema de gestión segura de identidades y secretos con cifrado End-to-End.
 
 ## 📋 Descripción
 
-Aplicación cliente-servidor para la protección y gestión de documentos clasificados militares, con múltiples capas de seguridad:
+Plataforma cliente-servidor para almacenamiento y gestión de **secretos** (contraseñas, claves API, certificados, SSH keys, notas seguras) y **archivos clasificados**, con cifrado E2E donde el servidor **nunca** tiene acceso al texto plano (modelo Zero Knowledge).
 
-- **Servidor Flask**: Backend API REST con autenticación JWT y 2FA
-- **Cliente CLI**: Interfaz de línea de comandos interactiva
-- **Swagger UI**: Documentación interactiva de la API en `/swagger/`
-- **Base de datos**: SQLite con datos sensibles cifrados
-- **Criptografía**: RSA-4096, AES-256, PBKDF2-SHA512
+- **Backend**: Flask REST API con JWT + 2FA (TOTP)
+- **Frontend Web**: Angular 17 + Angular Material
+- **Cliente Desktop**: Electron (empaquetado del frontend Angular)
+- **Cliente CLI**: Python interactivo (legacy)
+- **Swagger UI**: Documentación de API en `/swagger/`
+- **Base de datos**: SQLite (desarrollo) / PostgreSQL (producción)
 
 ## 🔒 Características de Seguridad
 
-- ✅ **Cifrado asimétrico RSA-4096** para intercambio de claves
-- ✅ **Cifrado simétrico AES-256-CBC** para archivos
-- ✅ **Derivación de claves PBKDF2-SHA512** (200,000 iteraciones)
-- ✅ **Autenticación de dos factores (2FA)** con TOTP/HOTP
-- ✅ **Firmas digitales RSA-PSS** para verificación de integridad
-- ✅ **Control de acceso basado en roles** (4 niveles de clasificación)
-- ✅ **Auditoría completa** de todas las operaciones
-- ✅ **Tokens JWT** para autenticación stateless
-- ✅ **Bloqueo de cuentas** tras intentos fallidos
-- ✅ **Hashing seguro** con Bcrypt (salt único por usuario)
-- ✅ **HTTPS/SSL** para comunicación cifrada (TLS 1.2/1.3)
-
-## 🎯 Niveles de Clasificación
-
-1. **RESTRICTED** - Nivel básico de acceso restringido
-2. **CONFIDENTIAL** - Información confidencial estándar
-3. **SECRET** - Información secreta
-4. **TOP_SECRET** - Máximo nivel de clasificación
+- ✅ **RSA-4096** — cifrado asimétrico para intercambio de claves
+- ✅ **AES-256-CTR** — cifrado simétrico de secretos y archivos
+- ✅ **Argon2id** (64 MB, 3 iter, 4 threads) — derivación de claves desde contraseña
+- ✅ **RSA-PSS SHA-256** — firmas digitales para integridad y no-repudio
+- ✅ **SHA-256** — verificación de integridad de contenido
+- ✅ **TOTP/HOTP** — autenticación de dos factores
+- ✅ **JWT** — tokens de acceso/refresh con revocación
+- ✅ **Bcrypt** — hashing de contraseñas de usuario
+- ✅ **HTTPS/TLS** — cifrado de transporte (certificado autofirmado en desarrollo)
+- ✅ **Auditoría completa** — log de todas las operaciones criptográficas
+- ✅ **Bloqueo de cuentas** — tras intentos fallidos de autenticación
+- ✅ **Zero Knowledge** — el servidor solo almacena datos cifrados
 
 ## 📁 Estructura del Proyecto
 
 ```
-PROTECCI-N2025/
-├── servidor/                  # Backend Flask
-│   ├── app.py                # Aplicación principal
-│   ├── config.py             # Configuración (usa .env)
-│   ├── models.py             # Modelos de base de datos
-│   ├── requirements.txt      # Dependencias Python
-│   ├── .env                  # Variables de entorno (NO SUBIR A GIT)
-│   ├── .env.example          # Plantilla de configuración
-│   ├── routes/               # Endpoints de la API
-│   │   ├── auth.py          # Autenticación y usuarios
-│   │   └── files.py         # Gestión de archivos
-│   └── utils/                # Utilidades
-│       ├── crypto.py        # Criptografía
-│       └── totp.py          # Autenticación 2FA
-│
-├── cliente/                   # Cliente CLI
-│   ├── client.py             # Cliente interactivo
-│   ├── requirements.txt      # Dependencias
-│   ├── .env                  # Configuración cliente
-│   ├── .env.example          # Plantilla
-│   └── README.md             # Documentación
-│
-├── .gitignore                 # Archivos ignorados por Git
-├── ENV_CONFIG.md              # Guía de configuración .env
-└── README.md                  # Este archivo
+DES-N2026/
+├── app.py                     # Servidor Flask (punto de entrada)
+├── config.py                  # Configuración (variables de entorno)
+├── models.py                  # Modelos SQLAlchemy (User, Secret, SecretVersion, etc.)
+├── requirements.txt           # Dependencias Python
+├── routes/                    # Endpoints de la API
+│   ├── auth.py               #   Autenticación, registro, 2FA, perfil
+│   ├── files.py              #   Gestión de archivos cifrados
+│   └── secrets.py            #   CRUD de secretos + carpetas + versiones
+├── utils/                     # Utilidades
+│   ├── crypto.py             #   CryptoManager (RSA, AES, firmas, hashes)
+│   ├── totp.py               #   Generación/verificación TOTP
+│   └── decorators.py         #   Decoradores de autorización
+├── cliente/                   # Cliente CLI (Python)
+│   └── client.py
+├── cliente2/                  # Frontend Angular 17 + Electron
+│   ├── src/app/
+│   │   ├── core/services/    #   AuthService, CryptoService, SecretsService, etc.
+│   │   ├── features/
+│   │   │   ├── auth/         #   Login, registro, 2FA
+│   │   │   ├── files/        #   Upload, listado, compartir archivos
+│   │   │   ├── secrets/      #   Bóveda de secretos (lista, crear, detalle)
+│   │   │   └── profile/      #   Perfil de usuario
+│   │   └── shared/           #   Componentes compartidos (dialogs)
+│   └── electron.js           #   Wrapper Electron para desktop
+├── docs/
+│   └── PRD.md                # Product Requirements Document (especificación completa)
+├── certs/                     # Certificados SSL autofirmados (auto-generados)
+└── instance/
+    └── database.db            # Base de datos SQLite (desarrollo)
 ```
 
-## 🚀 Instalación Rápida
+## 🚀 Instalación Rápida (Desarrollo Local)
 
-### Requisitos Previos
+### Requisitos previos
 
-- Python 3.8+
-- pip
-- Git (opcional)
+- Python 3.10+
+- Node.js 18+ y npm
+- Git
 
-### 🌐 Despliegue en Heroku (Producción)
-
-**⚠️ IMPORTANTE:** El proyecto está en la carpeta `servidor/`, por lo que se requiere configuración especial.
-
-Para desplegar en Heroku, consulta las guías detalladas:
-
-- **📖 [DEPLOY_SUBDIR.md](DEPLOY_SUBDIR.md)** - ⭐ Быстрая инструкция для подпапки
-- **📖 [HEROKU_SUBDIR.md](HEROKU_SUBDIR.md)** - Детальная документация
-- **📖 [HEROKU_RU.md](servidor/HEROKU_RU.md)** - Полная инструкция на русском
-- **📖 [QUICK_START.md](servidor/QUICK_START.md)** - Quick Start Guide
-
-**Resumen rápido (desde raíz del proyecto):**
-```bash
-# Вариант 1: Git Subtree (рекомендуется)
-heroku create
-heroku addons:create heroku-postgresql:mini
-cd servidor && python heroku_config.py && cd ..
-git subtree push --prefix servidor heroku main
-
-# Или используй готовый скрипт:
-deploy-subtree.bat  # Windows
-./deploy-subtree.sh # Linux/Mac
-
-# Вариант 2: Subdir Buildpack
-heroku buildpacks:add --index 1 https://github.com/timanovsky/subdir-heroku-buildpack
-heroku buildpacks:add heroku/python
-heroku config:set PROJECT_PATH=servidor
-git push heroku main
-```
-
-### 💻 Instalación Local (Desarrollo)
-
-### 1. Clonar o Descargar
+### 1. Backend (Flask)
 
 ```powershell
-git clone https://github.com/zebn/PROTECCI-N2025.git
-cd PROTECCI-N2025
-```
-
-### 2. Configurar Servidor
-
-```powershell
-cd servidor
-
-# Crear entorno virtual (recomendado)
+# Desde la raíz del proyecto
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 
-# Instalar dependencias
 pip install -r requirements.txt
 
-# Configurar variables de entorno
-copy .env.example .env
-# Editar .env con tus valores (ver ENV_CONFIG.md)
-
-# Ejecutar servidor
+# Iniciar servidor (HTTPS en puerto 5001)
 python app.py
 ```
 
-**El servidor se iniciará con HTTPS en**: `https://localhost:5001`
+El servidor automáticamente:
+- Genera certificados SSL si no existen (`certs/`)
+- Inicia en `https://localhost:5001`
+- Crea la BD SQLite (`instance/database.db`)
+- Crea usuario admin: `admin@admin.com` / `1`
+- Swagger UI en `https://localhost:5001/swagger/`
 
-Por defecto, el servidor:
-- Genera automáticamente certificados SSL autofirmados si no existen
-- Inicia con HTTPS habilitado (variable `USE_SSL=True`)
-- Crea directorio `certs/` con certificados
-
-**Para deshabilitar HTTPS** (usar HTTP):
+Para desactivar HTTPS:
 ```powershell
 $env:USE_SSL = "False"
 python app.py
 ```
 
-**Ver documentación completa de HTTPS**: [HTTPS_SETUP.md](HTTPS_SETUP.md)
-
-### 3. Configurar Cliente
+### 2. Frontend Angular
 
 ```powershell
-cd ..\cliente
+cd cliente2
+npm install
+npm start
+# Abierto en http://localhost:4200
+```
 
-# Instalar dependencias
+### 3. Cliente CLI (opcional)
+
+```powershell
+cd cliente
 pip install -r requirements.txt
-
-# Configurar variables de entorno
-copy .env.example .env
-# Editar .env si es necesario
-
-# Ejecutar cliente
 python client.py
 ```
 
-## ⚙️ Configuración con Variables de Entorno
+## ⚙️ Variables de Entorno
 
-Este proyecto usa archivos `.env` para configuración. **Ver `ENV_CONFIG.md` para guía completa.**
-
-### Variables Críticas del Servidor
-
-```env
-SECRET_KEY=tu-clave-secreta-super-segura
-JWT_SECRET_KEY=otra-clave-diferente-para-jwt
-DATABASE_URL=sqlite:///database.db
-PORT=5001
-```
-
-### Variables del Cliente
-
-```env
-SERVER_URL=http://localhost:5001
-REQUEST_TIMEOUT=30
-```
-
-⚠️ **IMPORTANTE**: Cambiar todas las claves por defecto antes de usar en producción.
-
-## 📖 Uso del Cliente CLI
-
-```powershell
-python client.py
-```
-
-### Menú Principal
-
-```
-1. Información del servidor
-2. Verificar estado (health check)
-3. Registrar nuevo usuario
-4. Iniciar sesión
-5. Ver perfil
-6. Configurar 2FA
-7. Verificar 2FA
-8. Listar mis archivos
-9. Cerrar sesión
-0. Salir
-```
-
-### Flujo de Trabajo Típico
-
-1. **Registrarse** (opción 3)
-2. **Iniciar sesión** (opción 4)
-3. **Configurar 2FA** (opción 6) - Recomendado
-4. **Verificar 2FA** (opción 7)
-5. **Ver archivos** (opción 8)
+| Variable | Default | Descripción |
+|----------|---------|-------------|
+| `SECRET_KEY` | `dev-secret-key-...` | Clave secreta de Flask |
+| `JWT_SECRET_KEY` | = SECRET_KEY | Clave para firmar JWT |
+| `DATABASE_URL` | `sqlite:///database.db` | URL de base de datos |
+| `PORT` | `5001` | Puerto del servidor |
+| `USE_SSL` | `True` | Activar HTTPS |
+| `FLASK_ENV` | `development` | Entorno (development/production) |
+| `JWT_ACCESS_TOKEN_HOURS` | `1` | Duración del access token |
 
 ## 🔧 API Endpoints
 
 ### Autenticación (`/api/auth`)
 
-- `POST /register` - Registrar usuario
-- `POST /login` - Iniciar sesión
-- `POST /setup-2fa` - Configurar 2FA
-- `POST /verify-2fa` - Verificar 2FA
-- `POST /logout` - Cerrar sesión
-- `GET /profile` - Ver perfil
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/auth/register` | Registrar usuario (con claves RSA) |
+| POST | `/api/auth/login` | Login → devuelve JWT |
+| POST | `/api/auth/setup-2fa` | Configurar TOTP |
+| POST | `/api/auth/verify-2fa` | Verificar código TOTP |
+| GET | `/api/auth/profile` | Perfil del usuario autenticado |
+| POST | `/api/auth/logout` | Cerrar sesión |
+
+### Secretos (`/api/secrets`)
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/secrets` | Crear secreto cifrado E2E |
+| GET | `/api/secrets` | Listar secretos (filtros + paginación) |
+| GET | `/api/secrets/:id` | Metadatos de un secreto |
+| POST | `/api/secrets/:id/decrypt` | Obtener datos cifrados para descifrar en cliente |
+| PUT | `/api/secrets/:id` | Actualizar (crea nueva versión) |
+| DELETE | `/api/secrets/:id` | Eliminar (soft delete) |
+| GET | `/api/secrets/:id/versions` | Historial de versiones |
+| POST | `/api/secrets/:id/rotate` | Rotar secreto |
+| POST | `/api/secrets/:id/verify` | Verificar integridad |
+
+### Carpetas (`/api/folders`)
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/folders` | Crear carpeta |
+| GET | `/api/folders` | Listar carpetas |
+| PUT | `/api/folders/:id` | Renombrar/mover |
+| DELETE | `/api/folders/:id` | Eliminar |
 
 ### Archivos (`/api/files`)
 
-- `POST /upload` - Subir archivo cifrado
-- `GET /list` - Listar archivos propios
-- `GET /<id>` - Descargar archivo
-- `POST /share` - Compartir con otro usuario
-- `DELETE /<id>` - Eliminar archivo
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/api/files/upload` | Subir archivo cifrado |
+| GET | `/api/files/list` | Listar archivos |
+| GET | `/api/files/:id` | Descargar archivo |
+| POST | `/api/files/share` | Compartir con otro usuario |
+| DELETE | `/api/files/:id` | Eliminar |
 
-## 🛡️ Seguridad en Producción
+## 🏗️ Arquitectura de Cifrado E2E
 
-### Checklist de Despliegue
+```
+CREAR SECRETO (cliente):
+  1. JSON del secreto → plaintext bytes
+  2. SHA-256(plaintext) → content_hash
+  3. Generar AES-256 key + nonce aleatorio
+  4. AES-256-CTR(plaintext) → encrypted_data
+  5. RSA-4096-OAEP(aes_key, public_key) → encrypted_aes_key
+  6. RSA-PSS(content_hash, private_key) → digital_signature
+  7. Enviar al servidor: encrypted_data + encrypted_aes_key + hash + firma
+
+LEER SECRETO (cliente):
+  1. Servidor devuelve datos cifrados
+  2. RSA-4096 descifra clave AES con private_key
+  3. AES-256-CTR descifra contenido
+  4. Verificar SHA-256 == content_hash
+  5. Verificar firma RSA-PSS
+  6. Mostrar en UI
+```
+
+El servidor **nunca** tiene acceso al contenido descifrado (Zero Knowledge).
+
+## 📊 Modelos de Base de Datos
+
+| Modelo | Tabla | Descripción |
+|--------|-------|-------------|
+| `User` | users | Usuarios con claves RSA, 2FA, roles |
+| `Secret` | secrets | Secretos cifrados E2E (contraseñas, API keys, etc.) |
+| `SecretVersion` | secret_versions | Historial de versiones de cada secreto |
+| `SecretAccessLog` | secret_access_logs | Log de accesos a secretos |
+| `Folder` | folders | Carpetas para organizar secretos |
+| `SecureFile` | secure_files | Archivos binarios cifrados |
+| `FileAccessLog` | file_access_logs | Log de accesos a archivos |
+| `FileShare` | file_shares | Compartición de archivos entre usuarios |
+| `AuditLog` | audit_logs | Auditoría general de operaciones |
+| `SignedOperation` | signed_operations | Operaciones con firma digital |
+
+## 📖 Documentación Detallada
+
+El **Product Requirements Document** completo está en [`docs/PRD.md`](docs/PRD.md) — contiene:
+- Especificación completa de requisitos funcionales y no funcionales
+- Modelos de datos detallados
+- Flujos criptográficos
+- Justificación de herramientas desde perspectiva de seguridad
+- Análisis de amenazas y mitigaciones
+- Modelo SDL aplicado
+
+## 🛡️ Checklist de Seguridad para Producción
 
 - [ ] Cambiar `SECRET_KEY` y `JWT_SECRET_KEY` por valores aleatorios fuertes
-- [ ] Usar HTTPS (no HTTP)
+- [ ] Usar HTTPS con certificado válido (no autofirmado)
 - [ ] Configurar `FLASK_ENV=production`
-- [ ] Usar base de datos robusta (PostgreSQL/MySQL en vez de SQLite)
+- [ ] Migrar a PostgreSQL
+- [ ] Validar `CORS_ORIGINS`
 - [ ] Implementar rate limiting
-- [ ] Configurar firewall
-- [ ] Habilitar logs de auditoría
 - [ ] Backup regular de base de datos
-- [ ] Revisar permisos de archivos
-- [ ] Validar CORS_ORIGINS
 
-### Generar Claves Seguras
+## ✅ Tests (Python)
 
-```powershell
-# PowerShell
--join ((48..57) + (65..90) + (97..122) | Get-Random -Count 64 | % {[char]$_})
+Ejecutar tests con `pytest`:
+
+```bash
+./.venv/bin/python -m pytest
 ```
 
-```python
-# Python
-import secrets
-print(secrets.token_urlsafe(64))
-```
-
-## 🧪 Testing
-
-```powershell
-# Servidor
-cd servidor
-python -m pytest
-
-# Cliente
-cd cliente
-python client.py http://localhost:5001
-```
-
-## 📊 Base de Datos
-
-### Modelos Principales
-
-- **User**: Usuarios con claves RSA y 2FA
-- **SecureFile**: Archivos cifrados con metadatos
-- **FileAccessLog**: Registro de accesos a archivos
-- **AuditLog**: Auditoría completa de operaciones
-- **SignedOperation**: Operaciones con firma digital
-
-## 🐛 Troubleshooting
-
-**Error: "ModuleNotFoundError: No module named 'dotenv'"**
-```powershell
-pip install python-dotenv
-```
-
-**Error: "SECRET_KEY no configurado"**
-- Asegurarse de que existe el archivo `.env`
-- Verificar que contiene `SECRET_KEY=valor`
-
-**Error de conexión en cliente**
-- Verificar que el servidor está corriendo
-- Comprobar que `SERVER_URL` en `cliente/.env` es correcto
-- Revisar firewall
-
-**Token expirado**
-- Volver a iniciar sesión (opción 4 en el cliente)
+Notas:
+- La configuración de discovery está en `.vscode/settings.json` y `pytest.ini`.
+- Los tests fuerzan `DATABASE_URL=sqlite:///:memory:` para no tocar `instance/database.db`.
 
 ## 📝 Licencia
 
-[Especificar licencia]
+Proyecto académico — DES-N2026 (Desarrollo de Aplicaciones Seguras, 2026)
 
-## 👥 Contribuir
-
-1. Fork el proyecto
-2. Crear branch (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit cambios (`git commit -am 'Agregar funcionalidad'`)
-4. Push al branch (`git push origin feature/nueva-funcionalidad`)
-5. Crear Pull Request
-
-## 📞 Contacto
+## 👥 Contacto
 
 - GitHub: [@zebn](https://github.com/zebn)
-- Proyecto: [PROTECCI-N2025](https://github.com/zebn/PROTECCI-N2025)
-
-## 🔄 Versión
-
-**v1.0.0** - Octubre 2025
 
 ---
 
-⚠️ **AVISO**: Este sistema maneja información clasificada. Asegúrese de cumplir con todas las regulaciones de seguridad aplicables en su jurisdicción.
+**v2.0.0** — Febrero 2026 (pivote a gestión de identidades y secretos)

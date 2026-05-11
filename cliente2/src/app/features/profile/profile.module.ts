@@ -15,6 +15,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatTableModule } from '@angular/material/table';
 
 import { ProfileComponent } from './profile.component';
 import { Setup2FADialogComponent } from '../../shared/components/setup-2fa-dialog/setup-2fa-dialog.component';
@@ -44,7 +45,8 @@ const routes: Routes = [
         MatInputModule,
         MatProgressSpinnerModule,
         MatSnackBarModule,
-        MatTooltipModule
+        MatTooltipModule,
+        MatTableModule
     ]
 })
 export class ProfileModule { }

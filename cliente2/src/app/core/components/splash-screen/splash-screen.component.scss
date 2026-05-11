@@ -28,16 +28,25 @@
 .phase2-title {
   font-size: 2.5rem;
   color: #ffd700;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
   font-weight: 700;
 }
 
+.phase2-server-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffd700;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
 .phase2-url {
-  font-size: 1.3rem;
-  color: #ff4081;
+  font-size: 1.1rem;
+  color: #00ff00;
+  font-family: monospace;
   margin-bottom: 2rem;
-  font-weight: 500;
+  opacity: 0.85;
 }
 
 .phase2-progress-container {

@@ -54,7 +54,7 @@ export class LoginComponent {
     this.notificationService.info(
       '🔄 Autenticando Usuario',
       'Verificando credenciales en el servidor...',
-      ['Conectando con servidor Zero Trust', 'Validando email y contraseña']
+      ['Conectando con servidor seguro', 'Validando email y contraseña']
     );
 
     this.authService.login(email, password, totpCode).subscribe({
@@ -70,7 +70,7 @@ export class LoginComponent {
         const userName = response.user?.nombre || email;
         this.notificationService.loginSuccess(userName);
         setTimeout(() => {
-          this.router.navigate(['/files']);
+          this.router.navigate(['/secrets']);
         }, 2000);
       },
       error: (error) => {

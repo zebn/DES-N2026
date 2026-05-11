@@ -123,7 +123,6 @@ SecretVersion:
   - encrypted_data: Text (JSON cifrado)
   - encrypted_aes_key: Text
   - content_hash: String
-  - digital_signature: Text
   - changed_by_id: FK -> User
   - change_reason: String (nullable)
   - created_at: DateTime
@@ -731,6 +730,20 @@ DES-N2026/
 | Derivacion de claves | Argon2id | Proteccion de claves privadas almacenadas |
 | Segundo factor | TOTP (HMAC-SHA1) | Autenticacion multifactor |
 | Tokens de sesion | JWT (HS256) | Autenticacion stateless con posibilidad de revocacion |
+
+### 8.4 Tacticas de mitigacion de riesgos aplicadas
+
+**Personas (factor humano):** En un sistema de gestion de identidades y secretos, el principal punto debil suele ser el usuario (phishing, reutilizacion de contrasenas, ingenieria social). Por eso aplicaria formacion y concienciacion continua (especialmente sobre phishing y manejo de 2FA), politicas claras de uso aceptable, y controles de acceso alineados con el principio de minimo privilegio: RBAC (ADMIN/MANAGER/USER/AUDITOR) y roles dentro de grupos, junto con separacion de funciones (por ejemplo, rol AUDITOR sin acceso a secretos) para reducir abuso interno. Mantendria MFA (TOTP) como requisito para acciones criticas (p. ej. backup/restore, exportaciones y operaciones sensibles), porque reduce significativamente el riesgo de compromiso de cuentas incluso con credenciales filtradas.
+
+**Procesos (gestion y organizacion):** Complementaria los controles tecnicos con procesos repetibles: un ciclo de gestion de riesgos (identificar-analizar-tratar-revisar) ligado a los requisitos (sesiones, comparticion, auditoria, backup), clasificacion operativa de la informacion (distinguir metadatos vs contenido cifrado, y tratar secretos como informacion de alta sensibilidad), y un proceso de gestion de incidentes probado (que contemple revocacion de sesiones, rotacion de secretos y exportacion de evidencias de auditoria). Dado que el impacto de un incidente puede ser alto (perdida de secretos, bloqueo por ransomware), el proceso de copias de seguridad debe seguir 3-2-1 y contemplar copias offline/inmutables; ademas, un BCP/DRP sencillo (pasos de recuperacion, responsables, RTO/RPO objetivo) evita improvisacion y reduce tiempo de recuperacion.
+
+**Tecnologia (controles tecnicos):** Priorizaria controles directamente alineados con el modelo de amenazas del proyecto: cifrado E2E y Zero Knowledge para que un compromiso del servidor o de la base de datos no exponga secretos en claro; TLS obligatorio para proteger credenciales/tokens en transito; hardening del servidor (configuracion segura de Gunicorn/Flask, cabeceras de seguridad, rate limiting) para reducir abuso y fuerza bruta; y gestion segura de claves (derivacion Argon2id, no persistir material sensible innecesario, y aislamiento en cliente Electron). En deteccion y respuesta, la auditoria centralizada (eventos de autenticacion, lectura/actualizacion/comparticion, revocaciones) es un control tecnico clave: permite detectar accesos anomalos y soportar investigacion forense sin necesidad de inspeccionar secretos.
+
+**Enfoques estrategicos (defensa en profundidad / Zero Trust / Security by Design):** Aplicaria defensa en profundidad para que un fallo no comprometa todo el sistema (p. ej. autenticacion fuerte + RBAC + sesiones revocables + auditoria), y Zero Trust como principio operativo: cada request se valida (JWT, rol, pertenencia a grupo, caducidad/revocacion) y el servidor nunca asume confianza por “estar dentro”. Security by Design/Default encaja con el proyecto porque la seguridad es parte del producto: los defaults deben ser conservadores (minimo privilegio, expiracion de comparticiones, 2FA en acciones criticas) y las decisiones de diseno (E2E, firmas, hashes, versionado) reducen riesgos estructurales desde el inicio.
+
+**Tratamiento del riesgo (mitigar / aceptar / transferir / evitar):** En este proyecto trataria como “a mitigar” todos los riesgos de alto impacto/probabilidad asociados a robo de credenciales, escalada de privilegios, exfiltracion y perdida de disponibilidad (mediante MFA, RBAC, revocacion de sesiones, cifrado E2E, auditoria y backups). Aceptaria riesgos residuales de bajo impacto cuando el coste de control sea desproporcionado (p. ej. ciertos escenarios de denegacion de servicio en entorno academico, siempre que exista rate limiting basico). Transferiria parte del riesgo operativo al proveedor de hosting/infra (p. ej. gestion de red perimetral, disponibilidad) cuando aplique, y evitaria riesgos directamente eliminando condiciones inseguras: no almacenar secretos en claro, no exponer claves privadas al servidor y minimizar dependencias.
+
+**Marcos y estandares (ISO/NIST/MITRE/ENS):** Usaria marcos de referencia para asegurar cobertura y trazabilidad de controles: ISO/IEC 27001/27002 para estructurar politicas y controles (acceso, criptografia, logging, continuidad), NIST CSF para organizar la seguridad por funciones (Identify/Protect/Detect/Respond/Recover) y verificar que backup/auditoria/incidentes estan cubiertos, y MITRE ATT&CK para mapear tacticas probables (phishing, credential access, lateral movement) a mitigaciones concretas (MFA, minimo privilegio, monitorizacion). En contexto de Espana, ENS aporta un lenguaje comun para justificar medidas y facilita alinear el proyecto con expectativas de seguridad en entornos publicos/academicos.
 
 ---
 

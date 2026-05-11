@@ -27,6 +27,7 @@ ENV/
 # *.sqlite
 # *.sqlite3
 # instance/
+instance/database.db
 
 # IDE
 .vscode/

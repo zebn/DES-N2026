@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from './core/services/auth.service';
+import { AuthService, User } from './core/services/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -16,7 +16,7 @@ import { AuthService } from './core/services/auth.service';
         
         <span class="app-title">
           <mat-icon class="shield-icon">shield</mat-icon>
-          MILCOM secure exchange - Inteligencia militar "Zero Trust"
+          SentryVault - Protege tu información más secreta
         </span>
         
         <span class="spacer"></span>
@@ -41,7 +41,7 @@ import { AuthService } from './core/services/auth.service';
       <mat-sidenav-container class="sidenav-container">
         <mat-sidenav #sidenav mode="side" [opened]="isAuthenticated" class="app-sidenav">
           <mat-nav-list>
-            <a mat-list-item routerLink="/files" routerLinkActive="active-link">
+   <!--         <a mat-list-item routerLink="/files" routerLinkActive="active-link">
               <mat-icon matListItemIcon>folder</mat-icon>
               <span matListItemTitle>Mis Archivos</span>
             </a>
@@ -56,7 +56,58 @@ import { AuthService } from './core/services/auth.service';
               <span matListItemTitle>Compartidos</span>
             </a>
             
+            
             <mat-divider></mat-divider>
+            -->
+
+            <a mat-list-item routerLink="/secrets" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">
+              <mat-icon matListItemIcon>lock</mat-icon>
+              <span matListItemTitle>Bóveda de Secretos</span>
+            </a>
+
+            <a mat-list-item routerLink="/secrets/shared-with-me" routerLinkActive="active-link">
+              <mat-icon matListItemIcon>inbox</mat-icon>
+              <span matListItemTitle>Compartido conmigo</span>
+            </a>
+
+            <a mat-list-item routerLink="/folders" routerLinkActive="active-link">
+              <mat-icon matListItemIcon>folder</mat-icon>
+              <span matListItemTitle>Gestión de Carpetas</span>
+            </a>
+
+            <a mat-list-item routerLink="/groups" routerLinkActive="active-link">
+              <mat-icon matListItemIcon>group</mat-icon>
+              <span matListItemTitle>Grupos</span>
+            </a>
+
+            <a mat-list-item routerLink="/backup" routerLinkActive="active-link">
+              <mat-icon matListItemIcon>backup</mat-icon>
+              <span matListItemTitle>Backup</span>
+            </a>
+
+            <mat-divider></mat-divider>
+
+            <!-- Admin-only section -->
+            <ng-container *ngIf="authService.isAdmin()">
+              <a mat-list-item routerLink="/admin" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
+                <span matListItemTitle>Panel Admin</span>
+              </a>
+              <mat-divider></mat-divider>
+            </ng-container>
+
+            <!-- Audit section (ADMIN + AUDITOR) -->
+            <ng-container *ngIf="authService.hasRole('ADMIN', 'AUDITOR')">
+              <a mat-list-item routerLink="/audit/logs" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>policy</mat-icon>
+                <span matListItemTitle>Auditoría</span>
+              </a>
+              <a mat-list-item routerLink="/audit/stats" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>analytics</mat-icon>
+                <span matListItemTitle>Estadísticas</span>
+              </a>
+              <mat-divider></mat-divider>
+            </ng-container>
             
             <a mat-list-item routerLink="/profile" routerLinkActive="active-link">
               <mat-icon matListItemIcon>person</mat-icon>
@@ -111,7 +162,7 @@ import { AuthService } from './core/services/auth.service';
     }
 
     .app-sidenav {
-      width: 250px;
+      width: 300px;
       padding: 16px 0;
     }
 
@@ -135,7 +186,7 @@ export class AppComponent implements OnInit {
   showSplash = true;
 
   constructor(
-    private authService: AuthService,
+    public authService: AuthService,
     private router: Router
   ) { }
 

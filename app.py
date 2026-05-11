@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Servidor Flask para sistema de protección de información
-Especializado para inteligencia militar con cifrado extremo
+Servidor Flask para SentryVault
+Sistema de protección de información con cifrado extremo
 """
 
 import os
@@ -12,9 +12,13 @@ from flask_cors import CORS
 from flasgger import Swagger
 
 from config import config
-from models import db, bcrypt
+from models import db, bcrypt, Session
 from routes.auth import auth_bp
 from routes.files import files_bp
+from routes.secrets import secrets_bp, folders_bp
+from routes.audit import audit_bp
+from routes.groups import groups_bp
+from routes.backup import backup_bp
 
 def create_app(config_name=None):
     """Factory para crear la aplicación Flask"""
@@ -41,8 +45,11 @@ def create_app(config_name=None):
     
     # CORS - Permitir Swagger UI y Angular en cualquier puerto localhost
     if config_name == 'development':
-        # En desarrollo, permitir cualquier puerto localhost
-        cors_origins = [r'http://localhost:\d+', r'http://127\.0\.0\.1:\d+']
+        # En desarrollo, permitir cualquier puerto localhost (http y https)
+        cors_origins = [
+            r'https?://localhost:\d+',
+            r'https?://127\.0\.0\.1:\d+'
+        ]
     else:
         # En producción, usar solo orígenes configurados
         cors_origins = app.config.get('CORS_ORIGINS', ['http://localhost:3000'])
@@ -89,12 +96,12 @@ def create_app(config_name=None):
     swagger_template = {
         "swagger": "2.0",
         "info": {
-            "title": "Inteligencia militar Zero Trust API",
-            "description": "API REST para gestión segura de archivos militares clasificados con cifrado extremo",
+            "title": "SentryVault API",
+            "description": "API REST para gestión segura de secretos",
             "contact": {
-                "responsibleOrganization": "Inteligencia Militar",
+                "responsibleOrganization": "SentryVault",
                 "responsibleDeveloper": "Equipo de Seguridad",
-                "email": "security@protecci-n2025.mil",
+                "email": "security@sentryvault.app",
             },
             "version": "1.0.0"
         },
@@ -124,6 +131,26 @@ def create_app(config_name=None):
                 "description": "Operaciones de gestión de archivos cifrados"
             },
             {
+                "name": "secrets",
+                "description": "Gestión de secretos cifrados E2E (CRUD, versiones, rotación)"
+            },
+            {
+                "name": "folders",
+                "description": "Organización de secretos en carpetas"
+            },
+            {
+                "name": "audit",
+                "description": "Auditoría, logs y estadísticas de actividad"
+            },
+            {
+                "name": "groups",
+                "description": "Gestión de grupos de usuarios y membresías"
+            },
+            {
+                "name": "backup",
+                "description": "Exportación e importación cifrada de secretos (.vault)"
+            },
+            {
                 "name": "system",
                 "description": "Información del sistema y health checks"
             }
@@ -135,6 +162,11 @@ def create_app(config_name=None):
     # Registrar blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(files_bp)
+    app.register_blueprint(secrets_bp)
+    app.register_blueprint(folders_bp)
+    app.register_blueprint(audit_bp)
+    app.register_blueprint(groups_bp)
+    app.register_blueprint(backup_bp)
     
     # Crear tablas de base de datos si no existen
     with app.app_context():
@@ -177,9 +209,9 @@ def create_app(config_name=None):
                   type: object
         """
         return jsonify({
-            'name': 'Inteligencia militar Zero Trust',
+            'name': 'SentryVault',
             'version': '1.0.0',
-            'description': 'Servidor seguro para intercambio de información militar clasificada',
+            'description': 'Servidor seguro para gestión de secretos',
             'security_features': [
                 'RSA-4096 criptografía asimétrica',
                 'AES-256-CTR cifrado de archivos',
@@ -234,7 +266,7 @@ def create_app(config_name=None):
     def docs():
         """Documentación de la API"""
         return jsonify({
-            'title': 'Inteligencia militar Zero Trust API',
+            'title': 'SentryVault API',
             'version': '1.0.0',
             'description': 'API para gestión segura de archivos clasificados',
             'authentication': 'JWT Bearer Token',
@@ -305,25 +337,62 @@ def create_app(config_name=None):
         if os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes'):
             print(f"[DEBUG JWT] Token expirado. Header: {jwt_header}, Payload: {jwt_payload}")
         return jsonify({'error': 'Token expirado'}), 401
-    
+
     @jwt.invalid_token_loader
     def invalid_token_callback(error):
         if os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes'):
             print(f"[DEBUG JWT] Token inválido. Error: {error}")
         return jsonify({'error': 'Token inválido'}), 401
-    
+
     @jwt.unauthorized_loader
     def missing_token_callback(error):
         if os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes'):
             print(f"[DEBUG JWT] Token faltante. Error: {error}")
         return jsonify({'error': 'Token requerido'}), 401
-    
+
+    # RF05 — Token blocklist y actualización de last_activity
+    # El callback se invoca en cada request con @jwt_required(); se aprovecha
+    # para refrescar el last_activity de la sesión sin un middleware aparte.
+    @jwt.token_in_blocklist_loader
+    def is_token_revoked(jwt_header, jwt_payload):
+        # Solo aplicamos blocklist a access tokens; los refresh tokens no
+        # tienen Session asociada (el modelo trackea la sesión activa).
+        if jwt_payload.get('type') == 'refresh':
+            return False
+        jti = jwt_payload.get('jti')
+        if not jti:
+            return False
+        session = Session.query.filter_by(token_jti=jti).first()
+        if session is None:
+            # Token emitido antes de RF05 o sin Session: lo aceptamos.
+            return False
+        if session.is_revoked:
+            return True
+        if session.is_expired():
+            session.revoke(reason='expired')
+            db.session.commit()
+            return True
+        # Refrescar last_activity (no se persiste si falla otra parte de la
+        # request — el commit lo hace el endpoint correspondiente).
+        from datetime import datetime as _dt
+        session.last_activity = _dt.utcnow()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        return False
+
+    @jwt.revoked_token_loader
+    def revoked_token_callback(jwt_header, jwt_payload):
+        return jsonify({'error': 'Sesión revocada o expirada'}), 401
+
     return app
 
 def init_admin_user(app):
     """Crear usuario administrador inicial si no existe"""
+    import json
     with app.app_context():
-        from models import User
+        from models import User, UserRole
         from utils.crypto import crypto_manager
         
         admin_email = "admin@admin.com"
@@ -347,6 +416,7 @@ def init_admin_user(app):
                 email=admin_email,
                 clearance_level="TOP_SECRET",
                 is_admin=True,
+                role=UserRole.ADMIN,
                 public_key=public_key,
                 private_key_encrypted=encrypted_private,
                 key_derivation_params=json.dumps(derivation_params),
@@ -408,7 +478,7 @@ if __name__ == '__main__':
         protocol = "http"
     
     print(f"""
-🚀 Iniciando Servidor de Inteligencia Militar Zero Trust
+🚀 Iniciando Servidor SentryVault
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📍 Servidor: {protocol}://localhost:{port}

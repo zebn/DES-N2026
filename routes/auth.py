@@ -7,13 +7,17 @@ import json
 import secrets
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, current_app
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
+from flask_jwt_extended import (
+    create_access_token, create_refresh_token, jwt_required,
+    get_jwt_identity, get_jwt, decode_token,
+)
 from werkzeug.exceptions import BadRequest
 from sqlalchemy.exc import IntegrityError
 
-from models import db, User, AuditLog
+from models import db, User, UserRole, AuditLog, Session
 from utils.crypto import crypto_manager
 from utils.totp import two_factor_auth
+from utils.decorators import require_role as _require_role_decorator
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -21,6 +25,30 @@ def get_current_user_id() -> int:
     """Helper para obtener user_id como int desde JWT identity (que es string)"""
     user_id_str = get_jwt_identity()
     return int(user_id_str)
+
+
+def _create_session_for_token(user_id: int, access_token: str) -> Session:
+    """Registrar una Session para el access_token recién emitido (RF05).
+
+    Decodifica el JWT para extraer ``jti`` y ``exp`` sin asumir el formato
+    interno, y persiste la sesión con metadatos del request actual.
+    """
+    decoded = decode_token(access_token)
+    jti = decoded['jti']
+    exp_ts = decoded.get('exp')
+    expires_at = datetime.utcfromtimestamp(exp_ts) if exp_ts else datetime.utcnow() + timedelta(hours=1)
+
+    user_agent = request.headers.get('User-Agent', '')
+    session = Session(
+        user_id=user_id,
+        token_jti=jti,
+        ip_address=request.remote_addr,
+        user_agent=user_agent[:500] if user_agent else None,
+        device_info=Session.parse_device_info(user_agent),
+        expires_at=expires_at,
+    )
+    db.session.add(session)
+    return session
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -110,16 +138,28 @@ def register():
         if User.query.filter_by(email=data['email']).first():
             return jsonify({'error': 'El usuario ya existe'}), 400
         
-        # Validar nivel de autorización
+        # Validar nivel de autorización (legacy, se mantiene por compatibilidad)
         clearance_level = data.get('clearance_level', 'CONFIDENTIAL')
         if clearance_level not in current_app.config['CLASSIFICATION_LEVELS']:
             return jsonify({'error': 'Nivel de autorización inválido'}), 400
+        
+        # Validar rol RBAC
+        role_str = data.get('role', 'USER').upper()
+        try:
+            user_role = UserRole(role_str)
+        except ValueError:
+            return jsonify({'error': f'Rol inválido: {role_str}. Válidos: ADMIN, MANAGER, USER, AUDITOR'}), 400
         
         # Generar sal para la contraseña
         salt = crypto_manager.secure_random_string(32)
         
         # Generar secreto TOTP
         totp_secret = two_factor_auth.totp.generate_secret()
+        
+        # Derivar is_admin del rol para compatibilidad legacy
+        is_admin_flag = (user_role == UserRole.ADMIN) or data.get('is_admin', False)
+        if is_admin_flag:
+            user_role = UserRole.ADMIN
         
         # Crear usuario
         user = User(
@@ -128,12 +168,13 @@ def register():
             email=data['email'],
             telefono=data.get('telefono'),
             salt=salt,
+            role=user_role,
             clearance_level=clearance_level,
             public_key=data['public_key'],
             private_key_encrypted=data['encrypted_private_key'],
             key_derivation_params=data['key_derivation_params'],
             totp_secret=totp_secret,
-            is_admin=data.get('is_admin', False)
+            is_admin=is_admin_flag
         )
         
         # Establecer contraseña con hash
@@ -160,6 +201,7 @@ def register():
             'message': 'Usuario registrado exitosamente',
             'user_id': user.id,
             'email': user.email,
+            'role': user.role.value,
             'clearance_level': user.clearance_level,
             'public_key': user.public_key
         }), 201
@@ -326,20 +368,24 @@ def login():
             identity=str(user.id),
             additional_claims={
                 'email': user.email,
+                'role': user.role.value,
                 'clearance_level': user.clearance_level,
-                'is_admin': user.is_admin
+                'is_admin': user.role == UserRole.ADMIN
             }
         )
         
         refresh_token = create_refresh_token(identity=str(user.id))
-        
+
         # Debug: verificar token inmediatamente
         import os
         if os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes'):
-            print(f"[DEBUG LOGIN] Token creado para user_id={user.id}, token={access_token[:50]}...")
-        
+            print(f"[DEBUG LOGIN] Token creado para user_id={user.id}, role={user.role.value}, token={access_token[:50]}...")
+
+        # RF05 — Registrar la Session asociada al access token
+        active_session = _create_session_for_token(user.id, access_token)
+
         db.session.commit()
-        
+
         # Registrar login exitoso
         log_entry = AuditLog(
             user_id=user.id,
@@ -351,6 +397,17 @@ def login():
             success=True
         )
         db.session.add(log_entry)
+        # RF06 — Evento de creación de sesión asociado al login
+        db.session.add(AuditLog(
+            user_id=user.id,
+            action='SESSION_CREATED',
+            resource_type='SESSION',
+            resource_id=active_session.id,
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent'),
+            success=True,
+            details=json.dumps({'device_info': active_session.device_info})
+        ))
         db.session.commit()
         
         return jsonify({
@@ -627,11 +684,16 @@ def refresh():
             identity=str(user.id),
             additional_claims={
                 'email': user.email,
+                'role': user.role.value,
                 'clearance_level': user.clearance_level,
-                'is_admin': user.is_admin
+                'is_admin': user.role == UserRole.ADMIN
             }
         )
-        
+
+        # RF05 — Registrar la nueva Session asociada al access token renovado
+        _create_session_for_token(user.id, new_access_token)
+        db.session.commit()
+
         return jsonify({'access_token': new_access_token}), 200
         
     except Exception as e:
@@ -727,24 +789,41 @@ def logout():
     """
     try:
         user_id = get_current_user_id()
-        
+
+        # RF05 — Revocar la sesión asociada al access token actual
+        jti = get_jwt().get('jti')
+        revoked_session_id = None
+        if jti:
+            session_row = Session.query.filter_by(token_jti=jti).first()
+            if session_row and not session_row.is_revoked:
+                session_row.revoke(reason='logout')
+                revoked_session_id = session_row.id
+
         # Registrar logout en auditoría
-        log_entry = AuditLog(
+        db.session.add(AuditLog(
             user_id=user_id,
             action='LOGOUT',
             resource_type='USER',
-            resource_id=user_id,
+            resource_id=str(user_id),
             ip_address=request.remote_addr,
             user_agent=request.headers.get('User-Agent'),
             success=True
-        )
-        db.session.add(log_entry)
+        ))
+        if revoked_session_id:
+            db.session.add(AuditLog(
+                user_id=user_id,
+                action='SESSION_REVOKED',
+                resource_type='SESSION',
+                resource_id=revoked_session_id,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent'),
+                success=True,
+                details=json.dumps({'reason': 'logout'})
+            ))
         db.session.commit()
-        
-        # En una implementación completa, aquí se invalidaría el token
-        # Por ahora solo retornamos confirmación
+
         return jsonify({'message': 'Logout exitoso'}), 200
-        
+
     except Exception as e:
         return jsonify({'error': f'Error en logout: {str(e)}'}), 500
 
@@ -778,9 +857,9 @@ def list_users():
         if not user:
             return jsonify({'error': 'Usuario no encontrado'}), 404
         
-        # Verificar que sea administrador
-        if not user.is_admin:
-            return jsonify({'error': 'Acceso denegado: se requieren permisos de administrador'}), 403
+        # Verificar que sea administrador (RBAC)
+        if not user.has_role('ADMIN'):
+            return jsonify({'error': 'Acceso denegado: se requiere rol ADMIN'}), 403
         
         # Obtener todos los usuarios
         users = User.query.all()
@@ -822,9 +901,9 @@ def activate_user(user_id):
         if not admin:
             return jsonify({'error': 'Usuario no encontrado'}), 404
         
-        # Verificar que sea administrador
-        if not admin.is_admin:
-            return jsonify({'error': 'Acceso denegado: se requieren permisos de administrador'}), 403
+        # Verificar que sea administrador (RBAC)
+        if not admin.has_role('ADMIN'):
+            return jsonify({'error': 'Acceso denegado: se requiere rol ADMIN'}), 403
         
         # Buscar el usuario a activar
         target_user = User.query.get(user_id)
@@ -887,9 +966,9 @@ def deactivate_user(user_id):
         if not admin:
             return jsonify({'error': 'Usuario no encontrado'}), 404
         
-        # Verificar que sea administrador
-        if not admin.is_admin:
-            return jsonify({'error': 'Acceso denegado: se requieren permisos de administrador'}), 403
+        # Verificar que sea administrador (RBAC)
+        if not admin.has_role('ADMIN'):
+            return jsonify({'error': 'Acceso denegado: se requiere rol ADMIN'}), 403
         
         # No permitir desactivarse a sí mismo
         if admin_id == user_id:
@@ -986,8 +1065,302 @@ def get_user_public_key():
             'email': user.email,
             'public_key': user.public_key,
             'is_active': user.is_active,
+            'role': user.role.value,
             'clearance_level': user.clearance_level
         }), 200
     
     except Exception as e:
         return jsonify({'error': f'Error obteniendo clave pública: {str(e)}'}), 500
+
+
+# ─── Gestión de roles RBAC ────────────────────────────────────────────────────
+
+@auth_bp.route('/roles', methods=['GET'])
+@jwt_required()
+def list_roles():
+    """
+    Listar roles disponibles y sus permisos
+    ---
+    tags:
+      - rbac
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Lista de roles y permisos
+    """
+    roles = {
+        'ADMIN': {
+            'description': 'Administrador del sistema',
+            'permissions': [
+                'CRUD usuarios', 'CRUD grupos', 'ver auditorías globales',
+                'gestionar roles', 'backup/restore', 'CRUD secretos propios'
+            ]
+        },
+        'MANAGER': {
+            'description': 'Gestor de equipos',
+            'permissions': [
+                'crear grupos', 'gestionar miembros de sus grupos',
+                'compartir secretos con sus grupos', 'CRUD secretos propios',
+                'ver auditorías de sus grupos'
+            ]
+        },
+        'USER': {
+            'description': 'Usuario estándar',
+            'permissions': [
+                'CRUD secretos propios',
+                'compartir secretos con usuarios/grupos donde participa',
+                'ver auditorías propias'
+            ]
+        },
+        'AUDITOR': {
+            'description': 'Auditor (solo lectura de logs)',
+            'permissions': [
+                'lectura de auditorías y logs (sin acceso a secretos)',
+                'generar informes de actividad'
+            ]
+        },
+    }
+    return jsonify({'roles': roles}), 200
+
+
+@auth_bp.route('/users/<int:target_user_id>/role', methods=['PUT'])
+@jwt_required()
+def change_user_role(target_user_id):
+    """
+    Cambiar el rol de un usuario (solo ADMIN)
+    ---
+    tags:
+      - rbac
+    security:
+      - Bearer: []
+    parameters:
+      - name: target_user_id
+        in: path
+        type: integer
+        required: true
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - role
+          properties:
+            role:
+              type: string
+              enum: [ADMIN, MANAGER, USER, AUDITOR]
+    responses:
+      200:
+        description: Rol actualizado
+      400:
+        description: Rol inválido
+      403:
+        description: No autorizado
+      404:
+        description: Usuario no encontrado
+    """
+    try:
+        admin_id = get_current_user_id()
+        admin = User.query.get(admin_id)
+
+        if not admin or not admin.has_role('ADMIN'):
+            return jsonify({'error': 'Acceso denegado: se requiere rol ADMIN'}), 403
+
+        target_user = User.query.get(target_user_id)
+        if not target_user:
+            return jsonify({'error': 'Usuario no encontrado'}), 404
+
+        # No permitir cambiar el rol a sí mismo (evitar quedarse sin admin)
+        if admin_id == target_user_id:
+            return jsonify({'error': 'No puedes cambiar tu propio rol'}), 400
+
+        data = request.get_json()
+        new_role_str = data.get('role', '').upper()
+
+        try:
+            new_role = UserRole(new_role_str)
+        except ValueError:
+            return jsonify({
+                'error': f'Rol inválido: {new_role_str}',
+                'valid_roles': [r.value for r in UserRole]
+            }), 400
+
+        old_role = target_user.role.value
+        target_user.role = new_role
+        # Sincronizar campo legacy is_admin
+        target_user.is_admin = (new_role == UserRole.ADMIN)
+
+        db.session.commit()
+
+        # Auditoría
+        log_entry = AuditLog(
+            user_id=admin_id,
+            action='ROLE_CHANGED',
+            resource_type='USER',
+            resource_id=target_user_id,
+            details=json.dumps({
+                'old_role': old_role,
+                'new_role': new_role.value,
+                'target_email': target_user.email
+            }),
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent'),
+            success=True
+        )
+        db.session.add(log_entry)
+        db.session.commit()
+
+        return jsonify({
+            'message': f'Rol de {target_user.email} cambiado de {old_role} a {new_role.value}',
+            'user': target_user.to_dict()
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Error cambiando rol: {str(e)}'}), 500
+
+
+# ─── Gestión de sesiones (RF05) ────────────────────────────────────────────────
+
+def _audit_session_revoked(user_id: int, session_id: str, reason: str):
+    db.session.add(AuditLog(
+        user_id=user_id,
+        action='SESSION_REVOKED',
+        resource_type='SESSION',
+        resource_id=session_id,
+        ip_address=request.remote_addr,
+        user_agent=request.headers.get('User-Agent'),
+        success=True,
+        details=json.dumps({'reason': reason})
+    ))
+
+
+@auth_bp.route('/sessions', methods=['GET'])
+@jwt_required()
+def list_sessions():
+    """
+    Listar las sesiones del usuario autenticado (RF05).
+    ---
+    tags:
+      - auth
+    security:
+      - Bearer: []
+    parameters:
+      - in: query
+        name: include_revoked
+        type: boolean
+        required: false
+        default: false
+        description: Si es true, incluye sesiones revocadas/expiradas
+    responses:
+      200:
+        description: Sesiones del usuario
+        schema:
+          type: object
+          properties:
+            sessions:
+              type: array
+              items:
+                type: object
+    """
+    try:
+        user_id = get_current_user_id()
+        include_revoked = request.args.get('include_revoked', 'false').lower() in ('1', 'true', 'yes')
+
+        query = Session.query.filter_by(user_id=user_id)
+        if not include_revoked:
+            query = query.filter_by(is_revoked=False).filter(Session.expires_at > datetime.utcnow())
+        sessions = query.order_by(Session.last_activity.desc()).all()
+
+        current_jti = get_jwt().get('jti')
+        return jsonify({
+            'sessions': [s.to_dict(current_jti=current_jti) for s in sessions]
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Error listando sesiones: {str(e)}'}), 500
+
+
+@auth_bp.route('/sessions/<string:session_id>', methods=['DELETE'])
+@jwt_required()
+def revoke_session(session_id):
+    """
+    Revocar una sesión concreta del usuario autenticado (RF05).
+    ---
+    tags:
+      - auth
+    security:
+      - Bearer: []
+    parameters:
+      - in: path
+        name: session_id
+        required: true
+        type: string
+    responses:
+      200:
+        description: Sesión revocada
+      404:
+        description: Sesión no encontrada
+    """
+    try:
+        user_id = get_current_user_id()
+        session_row = Session.query.filter_by(id=session_id, user_id=user_id).first()
+        if not session_row:
+            return jsonify({'error': 'Sesión no encontrada'}), 404
+
+        if session_row.is_revoked:
+            return jsonify({'message': 'La sesión ya estaba revocada'}), 200
+
+        session_row.revoke(reason='manual')
+        _audit_session_revoked(user_id, session_row.id, 'manual')
+        db.session.commit()
+
+        return jsonify({'message': 'Sesión revocada'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Error revocando sesión: {str(e)}'}), 500
+
+
+@auth_bp.route('/sessions', methods=['DELETE'])
+@jwt_required()
+def revoke_all_sessions():
+    """
+    Revocar todas las sesiones del usuario excepto la actual (RF05).
+    ---
+    tags:
+      - auth
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Sesiones revocadas
+        schema:
+          type: object
+          properties:
+            revoked_count:
+              type: integer
+    """
+    try:
+        user_id = get_current_user_id()
+        current_jti = get_jwt().get('jti')
+
+        active = Session.query.filter_by(user_id=user_id, is_revoked=False).all()
+        revoked_count = 0
+        for s in active:
+            if s.token_jti == current_jti:
+                continue
+            s.revoke(reason='revoke_all')
+            _audit_session_revoked(user_id, s.id, 'revoke_all')
+            revoked_count += 1
+
+        db.session.commit()
+        return jsonify({
+            'message': f'{revoked_count} sesiones revocadas',
+            'revoked_count': revoked_count
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Error revocando sesiones: {str(e)}'}), 500

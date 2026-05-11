@@ -597,8 +597,8 @@ def delete_file(file_id):
         if not file:
             return jsonify({'error': 'Archivo no encontrado'}), 404
         
-        # Verificar permisos
-        if file.user_id != user.id and not user.is_admin:
+        # Verificar permisos (RBAC: propietario o ADMIN)
+        if file.user_id != user.id and not user.has_role('ADMIN'):
             return jsonify({'error': 'Sin permisos para eliminar este archivo'}), 403
         
         # TODO: Verificar operación firmada para eliminación
@@ -694,8 +694,8 @@ def get_file_access_log(file_id):
         if not file:
             return jsonify({'error': 'Archivo no encontrado'}), 404
         
-        # Verificar permisos
-        if file.user_id != user.id and not user.is_admin:
+        # Verificar permisos (RBAC: propietario, ADMIN o AUDITOR)
+        if file.user_id != user.id and not user.has_role('ADMIN', 'AUDITOR'):
             return jsonify({'error': 'Sin permisos para ver el log de este archivo'}), 403
         
         # Obtener logs de acceso
@@ -1420,8 +1420,8 @@ def revoke_share(share_id):
         if not share:
             return jsonify({'error': 'Acceso compartido no encontrado'}), 404
         
-        # Verificar que el usuario es el propietario del archivo
-        if share.shared_by_id != user.id and not user.is_admin:
+        # Verificar que el usuario es el propietario del archivo (RBAC: propietario o ADMIN)
+        if share.shared_by_id != user.id and not user.has_role('ADMIN'):
             return jsonify({'error': 'Solo el propietario puede revocar el acceso'}), 403
         
         # Guardar info para auditoría
@@ -1515,8 +1515,8 @@ def list_file_shares(file_id):
         if not file:
             return jsonify({'error': 'Archivo no encontrado'}), 404
         
-        # Verificar que el usuario es el propietario
-        if file.user_id != user.id and not user.is_admin:
+        # Verificar que el usuario es el propietario (RBAC: propietario o ADMIN)
+        if file.user_id != user.id and not user.has_role('ADMIN'):
             return jsonify({'error': 'Solo el propietario puede ver los shares'}), 403
         
         # Obtener todos los shares del archivo

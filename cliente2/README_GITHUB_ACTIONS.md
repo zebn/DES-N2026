@@ -53,13 +53,13 @@ git push origin v1.0.0
 
 **Файлы в Release:**
 ```
-✅ MILCOM Secure Exchange Setup 1.0.0.exe (Windows Installer)
-✅ MILCOM Secure Exchange 1.0.0.exe (Windows Portable)
-✅ MILCOM Secure Exchange-1.0.0.dmg (macOS)
-✅ MILCOM Secure Exchange-1.0.0-mac.zip (macOS Archive)
-✅ MILCOM Secure Exchange-1.0.0.AppImage (Linux)
-✅ milcom-secure-exchange_1.0.0_amd64.deb (Linux Debian)
-✅ MILCOM Secure Exchange-1.0.0.tar.gz (Linux Archive)
+✅ SentryVault Setup 1.0.0.exe (Windows Installer)
+✅ SentryVault 1.0.0.exe (Windows Portable)
+✅ SentryVault-1.0.0.dmg (macOS)
+✅ SentryVault-1.0.0-mac.zip (macOS Archive)
+✅ SentryVault-1.0.0.AppImage (Linux)
+✅ sentryvault_1.0.0_amd64.deb (Linux Debian)
+✅ SentryVault-1.0.0.tar.gz (Linux Archive)
 ```
 
 ---
