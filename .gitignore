@@ -23,7 +23,7 @@ ENV/
 
 
 # Base de datos local (Heroku usa PostgreSQL)
-# *.db
+*.db
 # *.sqlite
 # *.sqlite3
 # instance/
