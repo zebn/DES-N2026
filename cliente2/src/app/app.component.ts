@@ -111,7 +111,7 @@ import { AuthService, User } from './core/services/auth.service';
             
             <a mat-list-item routerLink="/profile" routerLinkActive="active-link" (click)="closeSidenavOnMobile()">
               <mat-icon matListItemIcon>person</mat-icon>
-              <span matListItemTitle>Perfил</span>
+              <span matListItemTitle>Perfilv</span>
             </a>
             
             <a mat-list-item (click)="logout(); closeSidenavOnMobile()">
