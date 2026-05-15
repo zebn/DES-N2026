@@ -391,25 +391,36 @@ def create_app(config_name=None):
 def init_admin_user(app):
     """Crear usuario administrador inicial si no existe"""
     import json
-    with app.app_context():
-        from models import User, UserRole
-        from utils.crypto import crypto_manager
-        
-        admin_email = "admin@admin.com"
-        
-        if not User.query.filter_by(email=admin_email).first():
-            print("🔐 Creando usuario administrador inicial...")
+    import traceback
+    print("[INIT_ADMIN] Starting admin user initialization...")
+    try:
+        with app.app_context():
+            from models import User, UserRole
+            from utils.crypto import crypto_manager
+            
+            admin_email = "admin@admin.com"
+            print(f"[INIT_ADMIN] Checking if admin exists: {admin_email}")
+            
+            existing_admin = User.query.filter_by(email=admin_email).first()
+            if existing_admin:
+                print(f"[INIT_ADMIN] Admin already exists (ID: {existing_admin.id}). Skipping creation.")
+                return
+            
+            print("[INIT_ADMIN] 🔐 Creating initial admin user...")
             
             # Generar claves para el admin
+            print("[INIT_ADMIN] Generating RSA keypair...")
             private_key, public_key = crypto_manager.generate_rsa_keypair()
             admin_password = "1"  # En producción, usar contraseña segura
             
             # Cifrar clave privada
+            print("[INIT_ADMIN] Encrypting private key...")
             encrypted_private, derivation_params = crypto_manager.encrypt_private_key(
                 private_key, admin_password
             )
             
             # Crear usuario admin
+            print("[INIT_ADMIN] Creating admin User object...")
             admin = User(
                 nombre="Administrador",
                 apellidos="Sistema",
@@ -423,25 +434,35 @@ def init_admin_user(app):
                 salt=crypto_manager.secure_random_string(32)
             )
             
+            print("[INIT_ADMIN] Setting password...")
             admin.set_password(admin_password, admin.salt)
             
+            print("[INIT_ADMIN] Adding admin to DB session...")
             db.session.add(admin)
+            print("[INIT_ADMIN] Committing to DB...")
             db.session.commit()
             
-            print(f"✅ Usuario administrador creado:")
-            print(f"   Email: {admin_email}")
+            print(f"[INIT_ADMIN] ✅ Admin user created successfully:")
+            print(f"[INIT_ADMIN]    Email: {admin_email}")
+            print(f"[INIT_ADMIN]    Password: {admin_password}")
+            print(f"[INIT_ADMIN]    ID: {admin.id}")
+    except Exception as e:
+        print(f"[INIT_ADMIN] ❌ ERROR during admin creation: {type(e).__name__}: {str(e)}")
+        traceback.print_exc()
+        import sys
+        sys.stderr.write(f"[INIT_ADMIN_STDERR] {traceback.format_exc()}\n")
             print(f"   Password: {admin_password}")
             print(f"   ⚠️  CAMBIAR CONTRASEÑA EN PRODUCCIÓN")
 
 # Crear la instancia de la aplicación a nivel de módulo para gunicorn
 app = create_app()
 
+# Inicializar usuario admin (corre tanto en gunicorn como en desarrollo directo)
+init_admin_user(app)
+
 if __name__ == '__main__':
     import json
     from pathlib import Path
-    
-    # Crear usuario admin inicial
-    init_admin_user(app)
     
     # Configuración de desarrollo
     port = int(os.environ.get('PORT', 5001))

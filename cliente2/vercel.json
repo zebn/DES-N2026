@@ -4,7 +4,7 @@
     "rewrites": [
         {
             "source": "/api/:path*",
-            "destination": "$BACKEND_URL/api/:path*"
+            "destination": "https://des-2026-f31cbdae03b5.herokuapp.com/api/:path*"
         },
         {
             "source": "/(.*)",
