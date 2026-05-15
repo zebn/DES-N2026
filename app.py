@@ -436,12 +436,12 @@ def init_admin_user(app):
 # Crear la instancia de la aplicación a nivel de módulo para gunicorn
 app = create_app()
 
+# Inicializar usuario admin (corre tanto en gunicorn como en desarrollo directo)
+init_admin_user(app)
+
 if __name__ == '__main__':
     import json
     from pathlib import Path
-    
-    # Crear usuario admin inicial
-    init_admin_user(app)
     
     # Configuración de desarrollo
     port = int(os.environ.get('PORT', 5001))
