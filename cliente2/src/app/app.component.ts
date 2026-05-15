@@ -10,7 +10,7 @@ import { AuthService, User } from './core/services/auth.service';
 
     <div class="app-container" *ngIf="!showSplash">
       <mat-toolbar color="primary" class="app-toolbar">
-        <button mat-icon-button (click)="sidenav.toggle()" *ngIf="isAuthenticated">
+        <button mat-icon-button (click)="toggleSidenav()" *ngIf="isAuthenticated">
           <mat-icon>menu</mat-icon>
         </button>
         
@@ -39,7 +39,7 @@ import { AuthService, User } from './core/services/auth.service';
       </mat-toolbar>
 
       <mat-sidenav-container class="sidenav-container">
-        <mat-sidenav #sidenav mode="side" [opened]="isAuthenticated" class="app-sidenav">
+        <mat-sidenav #sidenav [mode]="sidenavMode" [opened]="sidenavOpened && isAuthenticated" class="app-sidenav">
           <mat-nav-list>
    <!--         <a mat-list-item routerLink="/files" routerLinkActive="active-link">
               <mat-icon matListItemIcon>folder</mat-icon>
@@ -60,27 +60,27 @@ import { AuthService, User } from './core/services/auth.service';
             <mat-divider></mat-divider>
             -->
 
-            <a mat-list-item routerLink="/secrets" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">
+            <a mat-list-item routerLink="/secrets" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}" (click)="closeSidenavOnMobile()">
               <mat-icon matListItemIcon>lock</mat-icon>
               <span matListItemTitle>Bóveda de Secretos</span>
             </a>
 
-            <a mat-list-item routerLink="/secrets/shared-with-me" routerLinkActive="active-link">
+            <a mat-list-item routerLink="/secrets/shared-with-me" routerLinkActive="active-link" (click)="closeSidenavOnMobile()">
               <mat-icon matListItemIcon>inbox</mat-icon>
               <span matListItemTitle>Compartido conmigo</span>
             </a>
 
-            <a mat-list-item routerLink="/folders" routerLinkActive="active-link">
+            <a mat-list-item routerLink="/folders" routerLinkActive="active-link" (click)="closeSidenavOnMobile()">
               <mat-icon matListItemIcon>folder</mat-icon>
               <span matListItemTitle>Gestión de Carpetas</span>
             </a>
 
-            <a mat-list-item routerLink="/groups" routerLinkActive="active-link">
+            <a mat-list-item routerLink="/groups" routerLinkActive="active-link" (click)="closeSidenavOnMobile()">
               <mat-icon matListItemIcon>group</mat-icon>
               <span matListItemTitle>Grupos</span>
             </a>
 
-            <a mat-list-item routerLink="/backup" routerLinkActive="active-link">
+            <a mat-list-item routerLink="/backup" routerLinkActive="active-link" (click)="closeSidenavOnMobile()">
               <mat-icon matListItemIcon>backup</mat-icon>
               <span matListItemTitle>Backup</span>
             </a>
@@ -89,7 +89,7 @@ import { AuthService, User } from './core/services/auth.service';
 
             <!-- Admin-only section -->
             <ng-container *ngIf="authService.isAdmin()">
-              <a mat-list-item routerLink="/admin" routerLinkActive="active-link">
+              <a mat-list-item routerLink="/admin" routerLinkActive="active-link" (click)="closeSidenavOnMobile()">
                 <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
                 <span matListItemTitle>Panel Admin</span>
               </a>
@@ -98,23 +98,23 @@ import { AuthService, User } from './core/services/auth.service';
 
             <!-- Audit section (ADMIN + AUDITOR) -->
             <ng-container *ngIf="authService.hasRole('ADMIN', 'AUDITOR')">
-              <a mat-list-item routerLink="/audit/logs" routerLinkActive="active-link">
+              <a mat-list-item routerLink="/audit/logs" routerLinkActive="active-link" (click)="closeSidenavOnMobile()">
                 <mat-icon matListItemIcon>policy</mat-icon>
                 <span matListItemTitle>Auditoría</span>
               </a>
-              <a mat-list-item routerLink="/audit/stats" routerLinkActive="active-link">
+              <a mat-list-item routerLink="/audit/stats" routerLinkActive="active-link" (click)="closeSidenavOnMobile()">
                 <mat-icon matListItemIcon>analytics</mat-icon>
                 <span matListItemTitle>Estadísticas</span>
               </a>
               <mat-divider></mat-divider>
             </ng-container>
             
-            <a mat-list-item routerLink="/profile" routerLinkActive="active-link">
+            <a mat-list-item routerLink="/profile" routerLinkActive="active-link" (click)="closeSidenavOnMobile()">
               <mat-icon matListItemIcon>person</mat-icon>
-              <span matListItemTitle>Perfil</span>
+              <span matListItemTitle>Perfил</span>
             </a>
             
-            <a mat-list-item (click)="logout()">
+            <a mat-list-item (click)="logout(); closeSidenavOnMobile()">
               <mat-icon matListItemIcon>logout</mat-icon>
               <span matListItemTitle>Cerrar Sesión</span>
             </a>
@@ -179,11 +179,41 @@ import { AuthService, User } from './core/services/auth.service';
     ::ng-deep .mat-mdc-list-item-title {
       margin-left: 16px;
     }
+
+    /* Mobile styles */
+    @media (max-width: 767px) {
+      .app-sidenav {
+        width: 280px;
+      }
+
+      .main-content {
+        padding: 16px;
+      }
+
+      .app-title {
+        font-size: 16px;
+        gap: 4px;
+      }
+    }
+
+    /* Tablet and up */
+    @media (min-width: 768px) {
+      .app-sidenav {
+        width: 300px;
+      }
+
+      .main-content {
+        padding: 20px;
+      }
+    }
   `]
 })
 export class AppComponent implements OnInit {
   isAuthenticated = false;
   showSplash = true;
+  isMobile = false;
+  sidenavMode: 'side' | 'over' = 'side';
+  sidenavOpened = true;
 
   constructor(
     public authService: AuthService,
@@ -193,6 +223,10 @@ export class AppComponent implements OnInit {
   ngOnInit() {
     // Splash screen will hide itself when both phases complete
 
+    // Detect screen size and set sidenav mode
+    this.checkScreenSize();
+    window.addEventListener('resize', () => this.checkScreenSize());
+
     // Subscribe to auth state
     this.authService.currentUser$.subscribe((user: any) => {
       this.isAuthenticated = !!user;
@@ -200,6 +234,22 @@ export class AppComponent implements OnInit {
         this.router.navigate(['/auth/login']);
       }
     });
+  }
+
+  checkScreenSize() {
+    this.isMobile = window.innerWidth < 768;
+    this.sidenavMode = this.isMobile ? 'over' : 'side';
+    this.sidenavOpened = !this.isMobile;
+  }
+
+  toggleSidenav() {
+    this.sidenavOpened = !this.sidenavOpened;
+  }
+
+  closeSidenavOnMobile() {
+    if (this.isMobile) {
+      this.sidenavOpened = false;
+    }
   }
 
   onSplashCompleted() {
