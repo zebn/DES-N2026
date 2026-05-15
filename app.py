@@ -451,8 +451,7 @@ def init_admin_user(app):
         traceback.print_exc()
         import sys
         sys.stderr.write(f"[INIT_ADMIN_STDERR] {traceback.format_exc()}\n")
-            print(f"   Password: {admin_password}")
-            print(f"   ⚠️  CAMBIAR CONTRASEÑA EN PRODUCCIÓN")
+
 
 # Создать la instancia de la aplicación a nivel de módulo para gunicorn
 import sys
