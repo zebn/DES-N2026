@@ -392,6 +392,7 @@ def init_admin_user(app):
     """Crear usuario administrador inicial si no existe"""
     import json
     import traceback
+    from sqlalchemy.exc import IntegrityError
     print("[INIT_ADMIN] Starting admin user initialization...")
     try:
         with app.app_context():
@@ -446,7 +447,12 @@ def init_admin_user(app):
             print(f"[INIT_ADMIN]    Email: {admin_email}")
             print(f"[INIT_ADMIN]    Password: {admin_password}")
             print(f"[INIT_ADMIN]    ID: {admin.id}")
+    except IntegrityError as e:
+        # Race condition: otro worker creó el admin primero
+        db.session.rollback()
+        print(f"[INIT_ADMIN] ⓘ  Admin already created by another worker (IntegrityError: {str(e)[:100]})")
     except Exception as e:
+        db.session.rollback()
         print(f"[INIT_ADMIN] ❌ ERROR during admin creation: {type(e).__name__}: {str(e)}")
         traceback.print_exc()
         import sys
