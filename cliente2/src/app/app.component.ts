@@ -16,7 +16,7 @@ import { AuthService, User } from './core/services/auth.service';
         
         <span class="app-title">
           <mat-icon class="shield-icon">shield</mat-icon>
-          SentryVault - Protege tu información más secreta
+          SentryVault<span class="app-subtitle"> - Protege tu información más secreta</span>
         </span>
         
         <span class="spacer"></span>
@@ -39,7 +39,7 @@ import { AuthService, User } from './core/services/auth.service';
       </mat-toolbar>
 
       <mat-sidenav-container class="sidenav-container">
-        <mat-sidenav #sidenav [mode]="sidenavMode" [opened]="sidenavOpened && isAuthenticated" class="app-sidenav">
+        <mat-sidenav #sidenav *ngIf="isAuthenticated" [mode]="sidenavMode" [opened]="sidenavOpened" class="app-sidenav">
           <mat-nav-list>
    <!--         <a mat-list-item routerLink="/files" routerLinkActive="active-link">
               <mat-icon matListItemIcon>folder</mat-icon>
@@ -180,6 +180,10 @@ import { AuthService, User } from './core/services/auth.service';
       margin-left: 16px;
     }
 
+    .app-subtitle {
+      display: inline;
+    }
+
     /* Mobile styles */
     @media (max-width: 767px) {
       .app-sidenav {
@@ -193,6 +197,10 @@ import { AuthService, User } from './core/services/auth.service';
       .app-title {
         font-size: 16px;
         gap: 4px;
+      }
+
+      .app-subtitle {
+        display: none;
       }
     }
 
