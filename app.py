@@ -454,11 +454,16 @@ def init_admin_user(app):
             print(f"   Password: {admin_password}")
             print(f"   ⚠️  CAMBIAR CONTRASEÑA EN PRODUCCIÓN")
 
-# Crear la instancia de la aplicación a nivel de módulo para gunicorn
+# Создать la instancia de la aplicación a nivel de módulo para gunicorn
+import sys
+print("[APP_INIT] 🚀 Starting app module initialization at module level...", file=sys.stderr, flush=True)
 app = create_app()
+print("[APP_INIT] ✓ Flask app created successfully", file=sys.stderr, flush=True)
 
 # Inicializar usuario admin (corre tanto en gunicorn como en desarrollo directo)
+print("[APP_INIT] Calling init_admin_user()...", file=sys.stderr, flush=True)
 init_admin_user(app)
+print("[APP_INIT] ✓ init_admin_user() completed", file=sys.stderr, flush=True)
 
 if __name__ == '__main__':
     import json
