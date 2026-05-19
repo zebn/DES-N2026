@@ -23,7 +23,6 @@ El proyecto actual ya implementa una arquitectura cliente/servidor robusta con c
 | Organizacion de acceso | Niveles de clasificacion (RESTRICTED..TOP_SECRET) | Roles organizacionales (Admin, Manager, User, Auditor) + Grupos/Equipos |
 | Comparticion | Por usuario individual | Por usuario y por grupo |
 | Backend | Flask + SQLite/PostgreSQL | Flask + SQLite/PostgreSQL (se mantiene) |
-| Frontend | Angular 17 + Electron | Angular 17 + Electron (se mantiene) |
 | Criptografia | RSA-4096, AES-256-CTR, Argon2id, RSA-PSS | Se mantiene intacta, se extiende a nuevas entidades |
 
 ---
@@ -53,7 +52,7 @@ El documento de la asignatura DAS-2026 establece los siguientes requisitos oblig
 
 | Requisito | Cubierto por codigo actual | Accion necesaria |
 |-----------|---------------------------|------------------|
-| Arquitectura cliente/servidor | SI — Flask API + Angular/Electron | Minima: renombrar contexto |
+| Arquitectura cliente/servidor | SI — Flask API + Angular | Minima: renombrar contexto |
 | Autenticacion segura | SI — Bcrypt + JWT + 2FA (TOTP) | Minima: anadir gestion de sesiones activas |
 | Gestion de sesion | PARCIAL — JWT con access/refresh tokens | Anadir: tabla de sesiones, revocacion, listado de sesiones activas |
 | Trafico cifrado | SI — HTTPS/TLS, cifrado E2E | Ninguna |
@@ -453,7 +452,7 @@ IMPORTAR:
 
 ```
 +------------------------------------------------------------------+
-|                     CLIENTE (Angular 17 + Electron)               |
+|                     CLIENTE (Angular 17 )               |
 |                                                                    |
 |  +------------------+  +------------------+  +------------------+ |
 |  |  Auth Module     |  |  Secrets Module  |  |  Groups Module   | |
@@ -702,7 +701,6 @@ DES-N2026/
 | Robo de JWT | Tokens de corta duracion (1h); revocacion via Session; HTTPS obligatorio |
 | Compromiso de servidor | Zero Knowledge: el servidor solo almacena datos cifrados |
 | Compromiso de BD | Todos los secretos cifrados con AES-256-CTR; claves cifradas con RSA |
-| Man-in-the-Middle | TLS 1.2+ obligatorio; certificate pinning en Electron |
 | Enumeracion de usuarios | Respuestas genericas en login fallido (ya implementado) |
 | Escalada de privilegios | RBAC verificado en cada endpoint; decorador `@require_role` |
 
@@ -737,7 +735,7 @@ DES-N2026/
 
 **Procesos (gestion y organizacion):** Complementaria los controles tecnicos con procesos repetibles: un ciclo de gestion de riesgos (identificar-analizar-tratar-revisar) ligado a los requisitos (sesiones, comparticion, auditoria, backup), clasificacion operativa de la informacion (distinguir metadatos vs contenido cifrado, y tratar secretos como informacion de alta sensibilidad), y un proceso de gestion de incidentes probado (que contemple revocacion de sesiones, rotacion de secretos y exportacion de evidencias de auditoria). Dado que el impacto de un incidente puede ser alto (perdida de secretos, bloqueo por ransomware), el proceso de copias de seguridad debe seguir 3-2-1 y contemplar copias offline/inmutables; ademas, un BCP/DRP sencillo (pasos de recuperacion, responsables, RTO/RPO objetivo) evita improvisacion y reduce tiempo de recuperacion.
 
-**Tecnologia (controles tecnicos):** Priorizaria controles directamente alineados con el modelo de amenazas del proyecto: cifrado E2E y Zero Knowledge para que un compromiso del servidor o de la base de datos no exponga secretos en claro; TLS obligatorio para proteger credenciales/tokens en transito; hardening del servidor (configuracion segura de Gunicorn/Flask, cabeceras de seguridad, rate limiting) para reducir abuso y fuerza bruta; y gestion segura de claves (derivacion Argon2id, no persistir material sensible innecesario, y aislamiento en cliente Electron). En deteccion y respuesta, la auditoria centralizada (eventos de autenticacion, lectura/actualizacion/comparticion, revocaciones) es un control tecnico clave: permite detectar accesos anomalos y soportar investigacion forense sin necesidad de inspeccionar secretos.
+**Tecnologia (controles tecnicos):** Priorizaria controles directamente alineados con el modelo de amenazas del proyecto: cifrado E2E y Zero Knowledge para que un compromiso del servidor o de la base de datos no exponga secretos en claro; TLS obligatorio para proteger credenciales/tokens en transito; hardening del servidor (configuracion segura de Gunicorn/Flask, cabeceras de seguridad, rate limiting) para reducir abuso y fuerza bruta; y gestion segura de claves (derivacion Argon2id, no persistir material sensible innecesario, y aislamiento en cliente). En deteccion y respuesta, la auditoria centralizada (eventos de autenticacion, lectura/actualizacion/comparticion, revocaciones) es un control tecnico clave: permite detectar accesos anomalos y soportar investigacion forense sin necesidad de inspeccionar secretos.
 
 **Enfoques estrategicos (defensa en profundidad / Zero Trust / Security by Design):** Aplicaria defensa en profundidad para que un fallo no comprometa todo el sistema (p. ej. autenticacion fuerte + RBAC + sesiones revocables + auditoria), y Zero Trust como principio operativo: cada request se valida (JWT, rol, pertenencia a grupo, caducidad/revocacion) y el servidor nunca asume confianza por “estar dentro”. Security by Design/Default encaja con el proyecto porque la seguridad es parte del producto: los defaults deben ser conservadores (minimo privilegio, expiracion de comparticiones, 2FA en acciones criticas) y las decisiones de diseno (E2E, firmas, hashes, versionado) reducen riesgos estructurales desde el inicio.
 
@@ -767,7 +765,7 @@ DES-N2026/
 | **Angular 17** | Sanitizacion XSS integrada, CSP compatible, AOT compilation que reduce inyeccion de templates |
 | **@noble/ciphers, @noble/curves, @noble/hashes** | Librerias criptograficas en JS puro, sin dependencias nativas, auditadas. Permiten cifrado E2E en el navegador |
 | **hash-wasm (Argon2id)** | Implementacion WASM de Argon2id para derivacion de claves en cliente con rendimiento cercano a nativo |
-| **Electron** | Permite distribucion como app de escritorio con aislamiento de proceso, almacenamiento seguro de claves en memoria |
+
 
 ### 9.3 Minimizacion de dependencias
 

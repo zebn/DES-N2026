@@ -8,7 +8,7 @@ Plataforma cliente-servidor para almacenamiento y gestión de **secretos** (cont
 
 - **Backend**: Flask REST API con JWT + 2FA (TOTP)
 - **Frontend Web**: Angular 17 + Angular Material
-- **Cliente Desktop**: Electron (empaquetado del frontend Angular)
+
 - **Cliente CLI**: Python interactivo (legacy)
 - **Swagger UI**: Documentación de API en `/swagger/`
 - **Base de datos**: SQLite (desarrollo) / PostgreSQL (producción)
@@ -53,7 +53,6 @@ DES-N2026/
 │   │   │   ├── secrets/      #   Bóveda de secretos (lista, crear, detalle)
 │   │   │   └── profile/      #   Perfil de usuario
 │   │   └── shared/           #   Componentes compartidos (dialogs)
-│   └── electron.js           #   Wrapper Electron para desktop
 ├── docs/
 │   └── PRD.md                # Product Requirements Document (especificación completa)
 ├── certs/                     # Certificados SSL autofirmados (auto-generados)
