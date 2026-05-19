@@ -44,8 +44,6 @@ DES-N2026/
 │   ├── crypto.py             #   CryptoManager (RSA, AES, firmas, hashes)
 │   ├── totp.py               #   Generación/verificación TOTP
 │   └── decorators.py         #   Decoradores de autorización
-├── cliente/                   # Cliente CLI (Python)
-│   └── client.py
 ├── cliente2/                  # Frontend Angular 17 + Electron
 │   ├── src/app/
 │   │   ├── core/services/    #   AuthService, CryptoService, SecretsService, etc.
@@ -106,13 +104,6 @@ npm start
 # Abierto en http://localhost:4200
 ```
 
-### 3. Cliente CLI (opcional)
-
-```powershell
-cd cliente
-pip install -r requirements.txt
-python client.py
-```
 
 ## ⚙️ Variables de Entorno
 
@@ -162,15 +153,6 @@ python client.py
 | PUT | `/api/folders/:id` | Renombrar/mover |
 | DELETE | `/api/folders/:id` | Eliminar |
 
-### Archivos (`/api/files`)
-
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| POST | `/api/files/upload` | Subir archivo cifrado |
-| GET | `/api/files/list` | Listar archivos |
-| GET | `/api/files/:id` | Descargar archivo |
-| POST | `/api/files/share` | Compartir con otro usuario |
-| DELETE | `/api/files/:id` | Eliminar |
 
 ## 🏗️ Arquitectura de Cifrado E2E
 

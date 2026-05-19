@@ -126,10 +126,10 @@ def create_app(config_name=None):
                 "name": "auth",
                 "description": "Operaciones de autenticación y gestión de usuarios"
             },
-            {
-                "name": "files",
-                "description": "Operaciones de gestión de archivos cifrados"
-            },
+            # {
+            #     "name": "files",
+            #     "description": "Operaciones de gestión de archivos cifrados"
+            # },
             {
                 "name": "secrets",
                 "description": "Gestión de secretos cifrados E2E (CRUD, versiones, rotación)"
@@ -225,7 +225,7 @@ def create_app(config_name=None):
             'classification_levels': list(app.config['CLASSIFICATION_LEVELS'].keys()),
             'endpoints': {
                 'auth': '/api/auth/',
-                'files': '/api/files/',
+                # 'files': '/api/files/',
                 'docs': '/docs',
                 'swagger': '/swagger/'
             }
@@ -281,15 +281,15 @@ def create_app(config_name=None):
                     'GET /api/auth/profile': 'Obtener perfil',
                     'POST /api/auth/logout': 'Cerrar sesión'
                 },
-                'files': {
-                    'POST /api/files/upload': 'Subir archivo cifrado',
-                    'GET /api/files/': 'Listar archivos',
-                    'GET /api/files/<id>': 'Información de archivo',
-                    'POST /api/files/<id>/download': 'Descargar archivo',
-                    'DELETE /api/files/<id>': 'Eliminar archivo',
-                    'GET /api/files/<id>/access-log': 'Log de accesos',
-                    'POST /api/files/verify-integrity/<id>': 'Verificar integridad'
-                }
+                # 'files': {
+                #     'POST /api/files/upload': 'Subir archivo cifrado',
+                #     'GET /api/files/': 'Listar archivos',
+                #     'GET /api/files/<id>': 'Información de archivo',
+                #     'POST /api/files/<id>/download': 'Descargar archivo',
+                #     'DELETE /api/files/<id>': 'Eliminar archivo',
+                #     'GET /api/files/<id>/access-log': 'Log de accesos',
+                #     'POST /api/files/verify-integrity/<id>': 'Verificar integridad'
+                # }
             },
             'security_notes': [
                 'Todas las operaciones requieren autenticación JWT',
